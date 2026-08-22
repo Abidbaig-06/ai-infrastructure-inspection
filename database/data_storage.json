@@ -1,6 +1,365 @@
 {
   "complaints": [
     {
+      "ticketId": "CP-2026-3292",
+      "title": "pothole",
+      "description": "[AI VISION ASSESSMENT]: Visual inspection of uploaded photo confirmed severe alligator cracking with sub-base cavitation measuring ~2.8m length, 1.6m width, and 14.5cm depth. High vehicle axle damage and collision hazard on active carriageway. Immediate emergency full-depth cold milling & bituminous compaction required under IRC:82-2015 standards. Citizen notes: \"pothole\"",
+      "category": "Road Hazard & Pothole",
+      "imageUrl": "https://tse3.mm.bing.net/th/id/OIP.fJE6msimNaBiohJfeRZ3QAHaET?r=0&pid=Api&P=0&h=180",
+      "multiAngleImages": {},
+      "location": {
+        "latitude": 16.3067,
+        "longitude": 80.4365,
+        "address": "brodipet 4 th line",
+        "landmark": "",
+        "ward": "Ward 02 - Brodipet Main Commercial & 4th Line",
+        "zone": "Zone 1 - Central Guntur",
+        "pincode": "522002"
+      },
+      "citizen": {
+        "name": "Anonymous Citizen",
+        "phone": "N/A",
+        "email": "",
+        "anonymous": false
+      },
+      "status": "AI_TRIAGED",
+      "aiAnalysis": {
+        "severity": "MEDIUM",
+        "riskScore": 52,
+        "urgencyLevel": "Standard Maintenance (<72h)",
+        "slaHours": 72,
+        "targetResolutionTime": "2026-08-25T08:38:15.019Z",
+        "assignedDepartment": "Department of Transportation & Roads",
+        "detectedHazards": [
+          "Asphalt sub-base degradation detected",
+          "Potential vehicle tire/suspension damage hazard",
+          "Water ingress accelerating road surface cratering"
+        ],
+        "recommendedEquipment": [
+          "Asphalt Hot-Box Unit",
+          "Plate Compactor",
+          "2-Ton Vibratory Roller",
+          "Quick-Cure Cold Mix"
+        ],
+        "estimatedCost": {
+          "min": 250,
+          "max": 600,
+          "currency": "USD"
+        },
+        "safetyPrecaution": "Standard barrier and traffic cone deployment required.",
+        "confidenceScore": 0.94,
+        "summaryReport": "AI Triage Engine evaluated Road Hazard & Pothole incident in Ward 02 - Brodipet Main Commercial & 4th Line. Classified as [MEDIUM] severity with composite Risk Index of 52/100. Primary vector: Asphalt sub-base degradation detected. Automated SLA target set to 72 hours under Department of Transportation & Roads.",
+        "analyzedAt": "2026-08-22T08:38:15.019Z",
+        "engineVersion": "CivicPulse-Vision-v3.4-Neural"
+      },
+      "assignedCrew": {
+        "crewId": null,
+        "teamLead": null,
+        "contactPhone": null,
+        "dispatchedAt": null,
+        "etaMinutes": null,
+        "status": "UNASSIGNED"
+      },
+      "workOrderRef": null,
+      "timeline": [
+        {
+          "action": "Citizen Grievance Registered",
+          "by": "Anonymous Citizen",
+          "timestamp": "2026-08-22T08:38:15.019Z",
+          "note": "Registered with Guntur GPS coordinates (16.3067, 80.4365)",
+          "badgeColor": "blue"
+        },
+        {
+          "action": "AI Vision & Hazard Triage Completed",
+          "by": "CivicPulse Neural Triage Engine",
+          "timestamp": "2026-08-22T08:38:15.019Z",
+          "note": "Classified as MEDIUM severity (Risk Score: 52/100). SLA: 72h.",
+          "badgeColor": "green"
+        }
+      ],
+      "resolutionProof": {
+        "resolvedAt": null,
+        "resolvedBy": null,
+        "beforeImageUrl": "https://tse3.mm.bing.net/th/id/OIP.fJE6msimNaBiohJfeRZ3QAHaET?r=0&pid=Api&P=0&h=180",
+        "afterImageUrl": "",
+        "resolutionNotes": "",
+        "citizenFeedbackRating": null
+      },
+      "createdAt": "2026-08-22T08:38:15.019Z",
+      "updatedAt": "2026-08-22T08:38:15.019Z",
+      "_id": "cmp_1787387895019"
+    },
+    {
+      "ticketId": "CP-2026-6006",
+      "title": "Critical Asphalt Crater with Sub-Base Collapse",
+      "description": "4-angle capture confirms severe 14.5cm depth cavitation",
+      "category": "Road Hazard & Pothole",
+      "imageUrl": "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800",
+      "multiAngleImages": {
+        "front": "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800",
+        "wide": "https://images.unsplash.com/photo-1578983427937-26078ee3d9d3?w=800",
+        "left": "https://images.unsplash.com/photo-1590496793929-36417d3117de?w=800",
+        "right": "https://images.unsplash.com/photo-1621929747188-0b4dc28498d2?w=800"
+      },
+      "location": {
+        "latitude": 16.3125,
+        "longitude": 80.428,
+        "address": "Lakshmipuram Main Road, near Hindu Pharmacy College",
+        "landmark": "",
+        "ward": "Ward 04 - Lakshmipuram Main Road & Hindu College",
+        "zone": "Zone 2 - Guntur West",
+        "pincode": "522007"
+      },
+      "citizen": {
+        "name": "Anonymous Citizen",
+        "phone": "N/A",
+        "email": "",
+        "anonymous": true
+      },
+      "status": "AI_TRIAGED",
+      "aiAnalysis": {
+        "severity": "MEDIUM",
+        "riskScore": 56,
+        "urgencyLevel": "Standard Maintenance (<72h)",
+        "slaHours": 72,
+        "targetResolutionTime": "2026-08-25T07:10:06.893Z",
+        "assignedDepartment": "Department of Transportation & Roads",
+        "detectedHazards": [
+          "Asphalt sub-base degradation detected",
+          "Potential vehicle tire/suspension damage hazard",
+          "Water ingress accelerating road surface cratering"
+        ],
+        "recommendedEquipment": [
+          "Asphalt Hot-Box Unit",
+          "Plate Compactor",
+          "2-Ton Vibratory Roller",
+          "Quick-Cure Cold Mix"
+        ],
+        "estimatedCost": {
+          "min": 250,
+          "max": 600,
+          "currency": "USD"
+        },
+        "safetyPrecaution": "Standard barrier and traffic cone deployment required.",
+        "confidenceScore": 0.94,
+        "summaryReport": "AI Triage Engine evaluated Road Hazard & Pothole incident in Ward 04 - Lakshmipuram Main Road & Hindu College. Classified as [MEDIUM] severity with composite Risk Index of 56/100. Primary vector: Asphalt sub-base degradation detected. Automated SLA target set to 72 hours under Department of Transportation & Roads.",
+        "analyzedAt": "2026-08-22T07:10:06.893Z",
+        "engineVersion": "CivicPulse-Vision-v3.4-Neural"
+      },
+      "assignedCrew": {
+        "crewId": null,
+        "teamLead": null,
+        "contactPhone": null,
+        "dispatchedAt": null,
+        "etaMinutes": null,
+        "status": "UNASSIGNED"
+      },
+      "workOrderRef": null,
+      "timeline": [
+        {
+          "action": "Citizen Grievance Registered",
+          "by": "Anonymous Citizen",
+          "timestamp": "2026-08-22T07:10:06.893Z",
+          "note": "Registered with Guntur GPS coordinates (16.3125, 80.428)",
+          "badgeColor": "blue"
+        },
+        {
+          "action": "AI Vision & Hazard Triage Completed",
+          "by": "CivicPulse Neural Triage Engine",
+          "timestamp": "2026-08-22T07:10:06.893Z",
+          "note": "Classified as MEDIUM severity (Risk Score: 56/100). SLA: 72h.",
+          "badgeColor": "green"
+        }
+      ],
+      "resolutionProof": {
+        "resolvedAt": null,
+        "resolvedBy": null,
+        "beforeImageUrl": "",
+        "afterImageUrl": "",
+        "resolutionNotes": "",
+        "citizenFeedbackRating": null
+      },
+      "createdAt": "2026-08-22T07:10:06.893Z",
+      "updatedAt": "2026-08-22T07:10:06.893Z",
+      "_id": "cmp_1787382606893"
+    },
+    {
+      "ticketId": "CP-2026-4078",
+      "title": "pothole",
+      "description": "[CIVIC HAZARD]: Heavy structural pothole crater with sub-base erosion. Presents acute vehicle axle and collision hazard. Immediate hot-mix compaction required. Note: \"pothole\"",
+      "category": "Road Hazard & Pothole",
+      "imageUrl": "https://media.gettyimages.com/id/172668923/photo/pot-hole.jpg?s=612x612&w=gi&k=20&c=0VqmAjaOeVR6E4U1SfQeEHVR2ripomtZ7BV8L-A3blY=",
+      "location": {
+        "latitude": 16.3067,
+        "longitude": 80.4365,
+        "address": "Near Lakshmipuram Main Junction, Guntur",
+        "landmark": "",
+        "ward": "Ward 04 - Lakshmipuram",
+        "zone": "Zone 2 - Guntur West",
+        "pincode": "522007"
+      },
+      "citizen": {
+        "name": "Anonymous Citizen",
+        "phone": "N/A",
+        "email": "",
+        "anonymous": false
+      },
+      "status": "AI_TRIAGED",
+      "aiAnalysis": {
+        "severity": "MEDIUM",
+        "riskScore": 54,
+        "urgencyLevel": "Standard Maintenance (<72h)",
+        "slaHours": 72,
+        "targetResolutionTime": "2026-08-25T06:42:11.492Z",
+        "assignedDepartment": "Department of Transportation & Roads",
+        "detectedHazards": [
+          "Asphalt sub-base degradation detected",
+          "Potential vehicle tire/suspension damage hazard",
+          "Water ingress accelerating road surface cratering"
+        ],
+        "recommendedEquipment": [
+          "Asphalt Hot-Box Unit",
+          "Plate Compactor",
+          "2-Ton Vibratory Roller",
+          "Quick-Cure Cold Mix"
+        ],
+        "estimatedCost": {
+          "min": 250,
+          "max": 600,
+          "currency": "USD"
+        },
+        "safetyPrecaution": "Standard barrier and traffic cone deployment required.",
+        "confidenceScore": 0.94,
+        "summaryReport": "AI Triage Engine evaluated Road Hazard & Pothole incident in Ward 04 - Lakshmipuram. Classified as [MEDIUM] severity with composite Risk Index of 54/100. Primary vector: Asphalt sub-base degradation detected. Automated SLA target set to 72 hours under Department of Transportation & Roads.",
+        "analyzedAt": "2026-08-22T06:42:11.492Z",
+        "engineVersion": "CivicPulse-Vision-v3.4-Neural"
+      },
+      "assignedCrew": {
+        "crewId": null,
+        "teamLead": null,
+        "contactPhone": null,
+        "dispatchedAt": null,
+        "etaMinutes": null,
+        "status": "UNASSIGNED"
+      },
+      "workOrderRef": null,
+      "timeline": [
+        {
+          "action": "Citizen Grievance Registered",
+          "by": "Anonymous Citizen",
+          "timestamp": "2026-08-22T06:42:11.492Z",
+          "note": "Registered with Guntur GPS coordinates (16.3067, 80.4365)",
+          "badgeColor": "blue"
+        },
+        {
+          "action": "AI Vision & Hazard Triage Completed",
+          "by": "CivicPulse Neural Triage Engine",
+          "timestamp": "2026-08-22T06:42:11.492Z",
+          "note": "Classified as MEDIUM severity (Risk Score: 54/100). SLA: 72h.",
+          "badgeColor": "green"
+        }
+      ],
+      "resolutionProof": {
+        "resolvedAt": null,
+        "resolvedBy": null,
+        "beforeImageUrl": "https://media.gettyimages.com/id/172668923/photo/pot-hole.jpg?s=612x612&w=gi&k=20&c=0VqmAjaOeVR6E4U1SfQeEHVR2ripomtZ7BV8L-A3blY=",
+        "afterImageUrl": "",
+        "resolutionNotes": "",
+        "citizenFeedbackRating": null
+      },
+      "createdAt": "2026-08-22T06:42:11.492Z",
+      "updatedAt": "2026-08-22T06:42:11.492Z",
+      "_id": "cmp_1787380931492"
+    },
+    {
+      "ticketId": "CP-2026-4639",
+      "title": "pothole in the middle of the road",
+      "description": "pothole in the middle of the road",
+      "category": "Road Hazard & Pothole",
+      "imageUrl": "https://media.gettyimages.com/id/172668923/photo/pot-hole.jpg?s=612x612&w=gi&k=20&c=0VqmAjaOeVR6E4U1SfQeEHVR2ripomtZ7BV8L-A3blY=",
+      "location": {
+        "latitude": 16.3067,
+        "longitude": 80.4365,
+        "address": "near vivekananda statue , pattabhipuram,guntur",
+        "landmark": "",
+        "ward": "Ward 23 - Pattabhipuram",
+        "zone": "Zone 2 - Guntur West",
+        "pincode": "522007"
+      },
+      "citizen": {
+        "name": "Anonymous Citizen",
+        "phone": "N/A",
+        "email": "",
+        "anonymous": false
+      },
+      "status": "AI_TRIAGED",
+      "aiAnalysis": {
+        "severity": "MEDIUM",
+        "riskScore": 56,
+        "urgencyLevel": "Standard Maintenance (<72h)",
+        "slaHours": 72,
+        "targetResolutionTime": "2026-08-25T06:41:25.928Z",
+        "assignedDepartment": "Department of Transportation & Roads",
+        "detectedHazards": [
+          "Asphalt sub-base degradation detected",
+          "Potential vehicle tire/suspension damage hazard",
+          "Water ingress accelerating road surface cratering"
+        ],
+        "recommendedEquipment": [
+          "Asphalt Hot-Box Unit",
+          "Plate Compactor",
+          "2-Ton Vibratory Roller",
+          "Quick-Cure Cold Mix"
+        ],
+        "estimatedCost": {
+          "min": 250,
+          "max": 600,
+          "currency": "USD"
+        },
+        "safetyPrecaution": "Standard barrier and traffic cone deployment required.",
+        "confidenceScore": 0.94,
+        "summaryReport": "AI Triage Engine evaluated Road Hazard & Pothole incident in Ward 23 - Pattabhipuram. Classified as [MEDIUM] severity with composite Risk Index of 56/100. Primary vector: Asphalt sub-base degradation detected. Automated SLA target set to 72 hours under Department of Transportation & Roads.",
+        "analyzedAt": "2026-08-22T06:41:25.928Z",
+        "engineVersion": "CivicPulse-Vision-v3.4-Neural"
+      },
+      "assignedCrew": {
+        "crewId": null,
+        "teamLead": null,
+        "contactPhone": null,
+        "dispatchedAt": null,
+        "etaMinutes": null,
+        "status": "UNASSIGNED"
+      },
+      "workOrderRef": null,
+      "timeline": [
+        {
+          "action": "Citizen Grievance Registered",
+          "by": "Anonymous Citizen",
+          "timestamp": "2026-08-22T06:41:25.928Z",
+          "note": "Registered with Guntur GPS coordinates (16.3067, 80.4365)",
+          "badgeColor": "blue"
+        },
+        {
+          "action": "AI Vision & Hazard Triage Completed",
+          "by": "CivicPulse Neural Triage Engine",
+          "timestamp": "2026-08-22T06:41:25.928Z",
+          "note": "Classified as MEDIUM severity (Risk Score: 56/100). SLA: 72h.",
+          "badgeColor": "green"
+        }
+      ],
+      "resolutionProof": {
+        "resolvedAt": null,
+        "resolvedBy": null,
+        "beforeImageUrl": "https://media.gettyimages.com/id/172668923/photo/pot-hole.jpg?s=612x612&w=gi&k=20&c=0VqmAjaOeVR6E4U1SfQeEHVR2ripomtZ7BV8L-A3blY=",
+        "afterImageUrl": "",
+        "resolutionNotes": "",
+        "citizenFeedbackRating": null
+      },
+      "createdAt": "2026-08-22T06:41:25.928Z",
+      "updatedAt": "2026-08-22T06:41:25.928Z",
+      "_id": "cmp_1787380885928"
+    },
+    {
       "_id": "cmp_101",
       "ticketId": "CP-2026-9812",
       "title": "Severe Pothole with Sub-Base Fracture on Lakshmipuram Main Road",

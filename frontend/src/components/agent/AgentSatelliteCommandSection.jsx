@@ -5,6 +5,7 @@ import { RealLifeSatelliteMap } from './RealLifeSatelliteMap';
 import { AIVisionInspectorCanvas } from './AIVisionInspectorCanvas';
 import { MaintenancePrioritizer } from './MaintenancePrioritizer';
 import { MaintenanceHistoryDrawer } from './MaintenanceHistoryDrawer';
+import { AlertDefectCard } from './AlertDefectCard';
 import { AIAnalysisModal } from './AIAnalysisModal';
 import { DispatchCrewModal } from './DispatchCrewModal';
 import { WorkOrderModal } from './WorkOrderModal';
@@ -122,6 +123,7 @@ export const AgentSatelliteCommandSection = () => {
       {/* Main Agent Workspace (Always Accessible) */}
       <div className="space-y-6">
         {/* Navigation Tabs */}
+        {/* Navigation Tabs */}
         <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-950 p-2 rounded-xl border border-slate-800 text-xs">
           <div className="flex flex-wrap gap-1.5">
             <button
@@ -133,20 +135,7 @@ export const AgentSatelliteCommandSection = () => {
                   : 'text-slate-400 hover:text-white hover:bg-slate-900'
               }`}
             >
-              <span>🛰️ Upper-View Satellite Map (Red Dots)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveSubTab('prioritizer')}
-              className={`px-3.5 py-2 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
-                activeSubTab === 'prioritizer'
-                  ? 'bg-civic-600 text-white shadow'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
-              }`}
-            >
-              <Sliders className="w-3.5 h-3.5" />
-              <span>Prioritized Maintenance Plan (Budget & Crew)</span>
+              <span>🛰️ Aerial Satellite (Red Dots)</span>
             </button>
 
             <button
@@ -159,7 +148,20 @@ export const AgentSatelliteCommandSection = () => {
               }`}
             >
               <History className="w-3.5 h-3.5" />
-              <span>Asset Maintenance History Retrieval</span>
+              <span>Asset Maintenance History</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('prioritizer')}
+              className={`px-3.5 py-2 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                activeSubTab === 'prioritizer'
+                  ? 'bg-civic-600 text-white shadow'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
+              }`}
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Resource-Aware Prioritization</span>
             </button>
           </div>
 
@@ -184,62 +186,21 @@ export const AgentSatelliteCommandSection = () => {
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-ping inline-block" />
-                  <span>Spot Registered Defect Coordinates (Click to inspect or dispatch)</span>
+                  <span>Reported Issues & Evidence Feed ({complaints.length} Registered in Guntur)</span>
                 </h4>
                 <span className="text-xs text-slate-500 font-mono">
-                  {complaints.length} Total Complaints in Guntur Wards
+                  Evidence-Linked Field Intelligence
                 </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                {complaints.map((c) => {
-                  const severity = c.aiAnalysis?.severity || 'MEDIUM';
-                  return (
-                    <div
-                      key={c.ticketId}
-                      onClick={() => handleInspectComplaint(c)}
-                      className="bg-slate-800/80 hover:bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-civic-500 transition-all cursor-pointer space-y-3 shadow-md group"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="relative flex h-3 w-3">
-                            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${
-                              severity === 'CRITICAL' ? 'bg-red-400' : 'bg-amber-400'
-                            } opacity-75`}></span>
-                            <span className={`relative inline-flex rounded-full h-3 w-3 ${
-                              severity === 'CRITICAL' ? 'bg-red-600' : 'bg-amber-500'
-                            }`}></span>
-                          </span>
-                          <span className="font-mono font-bold text-xs text-civic-300">
-                            {c.ticketId}
-                          </span>
-                        </div>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
-                          severity === 'CRITICAL' ? 'bg-red-950 text-red-400 border border-red-800' : 'bg-amber-950 text-amber-400 border border-amber-800'
-                        }`}>
-                          {severity} ({c.aiAnalysis?.riskScore || 50}/100)
-                        </span>
-                      </div>
-
-                      <div>
-                        <h5 className="text-xs font-bold text-white line-clamp-1 group-hover:text-civic-300 transition-colors">
-                          {c.title}
-                        </h5>
-                        <p className="text-[11px] text-slate-400 line-clamp-2 mt-1">
-                          {c.description}
-                        </p>
-                      </div>
-
-                      <div className="pt-2 border-t border-slate-700/80 flex items-center justify-between text-[11px] text-slate-400 font-mono">
-                        <span className="truncate max-w-[170px]">📍 {c.location?.ward}</span>
-                        <span className="text-civic-400 font-semibold group-hover:underline flex items-center gap-1">
-                          <span>Inspect</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
+                {complaints.map((c) => (
+                  <AlertDefectCard
+                    key={c.ticketId}
+                    complaint={c}
+                    onInspect={handleInspectComplaint}
+                  />
+                ))}
               </div>
             </div>
           </div>

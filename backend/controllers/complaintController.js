@@ -127,6 +127,7 @@ exports.createComplaint = async (req, res) => {
       description,
       category,
       imageUrl,
+      multiAngleImages,
       latitude,
       longitude,
       address,
@@ -152,7 +153,7 @@ exports.createComplaint = async (req, res) => {
       title,
       description,
       category,
-      ward: ward || 'Ward 04 - Lakshmipuram',
+      ward: ward || 'Ward 04 - Lakshmipuram Main Road & Hindu College',
       location: { latitude, longitude, address },
       imageUrl,
       priorityClaimed
@@ -163,19 +164,20 @@ exports.createComplaint = async (req, res) => {
       title,
       description,
       category,
-      imageUrl: imageUrl || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800&auto=format&fit=crop&q=80',
+      imageUrl: imageUrl || multiAngleImages?.front || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800&auto=format&fit=crop&q=80',
+      multiAngleImages: multiAngleImages || {},
       location: {
         latitude: Number(latitude) || 16.3125,
         longitude: Number(longitude) || 80.4280,
         address: address || 'Lakshmipuram Main Road, Guntur',
         landmark: landmark || '',
-        ward: ward || 'Ward 04 - Lakshmipuram',
+        ward: ward || 'Ward 04 - Lakshmipuram Main Road & Hindu College',
         zone: zone || 'Zone 2 - Guntur West',
         pincode: pincode || '522007'
       },
       citizen: {
         name: anonymous ? 'Anonymous Citizen' : (citizenName || 'GMC Citizen'),
-        phone: citizenPhone || '+91 98480 00112',
+        phone: citizenPhone || 'N/A',
         email: citizenEmail || '',
         anonymous: Boolean(anonymous)
       },

@@ -9,6 +9,7 @@ import {
   Truck,
   Building2,
   Eye,
+  Scan,
   CheckCircle2,
   Navigation,
   Maximize2
@@ -199,10 +200,10 @@ export const RealLifeSatelliteMap = ({
                     <button
                       type="button"
                       onClick={() => onSelectComplaint && onSelectComplaint(c)}
-                      className="w-full py-1.5 bg-zinc-900 hover:bg-black text-white font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors"
+                      className="w-full py-2 white-gloss-btn text-black font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer"
                     >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Inspect AI Defect & Dispatch</span>
+                      <Scan className="w-3.5 h-3.5 text-black" />
+                      <span>AI Vision & Defect Detection</span>
                     </button>
                   </div>
                 </Popup>
