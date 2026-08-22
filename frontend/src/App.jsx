@@ -6,6 +6,7 @@ import { InspectionWorkspacePage } from './pages/InspectionWorkspacePage';
 import { TrackTicketPage } from './pages/TrackTicketPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { WorkOrdersPage } from './pages/WorkOrdersPage';
+import { MeeBhoomiRegistryPage } from './pages/MeeBhoomiRegistryPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { GrievanceProvider } from './context/GrievanceContext';
 import { ROUTES } from './config/routes';
@@ -27,6 +28,11 @@ export const App = () => {
           {/* Public Ticket Tracking */}
           <Route path="/track/:ticketId" element={<TrackTicketPage />} />
           <Route path={ROUTES.TRACK_TICKET} element={<TrackTicketPage />} />
+
+          {/* Mee Bhoomi Guntur Land & Infrastructure Registry */}
+          <Route path={ROUTES.MEE_BHOOMI_REGISTRY} element={<MeeBhoomiRegistryPage />} />
+          <Route path="/mee-bhoomi" element={<MeeBhoomiRegistryPage />} />
+          <Route path="/land-assets" element={<MeeBhoomiRegistryPage />} />
 
           {/* Executive Analytics & Work Orders */}
           <Route path="/analytics" element={<AnalyticsPage />} />

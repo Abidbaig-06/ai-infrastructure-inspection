@@ -21,22 +21,102 @@ export const EngineeringDossierModal = ({
   if (!isOpen || !complaint) return null;
 
   const ai = inspectionData || complaint.aiAnalysis || {};
-  const defects = ai.visionDefects || [
-    {
-      defectType: 'Alligator Cracking & Asphalt Spalling',
-      dimensions: 'Length: 2.8m, Width: 1.6m, Depth: 14.5cm',
-      ircCodeStandard: 'IRC:82-2015 Pavement Maintenance Standard (Severity III)'
-    }
-  ];
+  const cat = complaint.category || '';
+  const isRoad = cat.includes('Road') || cat.includes('Pothole') || (!cat.includes('Water') && !cat.includes('Electrical') && !cat.includes('Wire') && !cat.includes('Waste'));
+  const isWater = cat.includes('Water') || cat.includes('Sewage');
+  const isElectric = cat.includes('Electrical') || cat.includes('Wire');
+  const isWaste = cat.includes('Waste') || cat.includes('Garbage') || cat.includes('Drainage') || cat.includes('Debris');
 
-  const boq = ai.engineeringRecommendations?.billOfQuantities || [
-    { item: 'Cold Milling & Concrete Saw-Cutting', quantity: '4.5 sq.m', unitCostUSD: 40, totalUSD: 180 },
-    { item: 'Granular Sub-Base (GSB) Replacement & Vibro-Compaction', quantity: '1.2 cu.m', unitCostUSD: 120, totalUSD: 144 },
-    { item: 'Bituminous Concrete (BC) Hot Mix Overlay (40mm thickness)', quantity: '0.8 MT', unitCostUSD: 310, totalUSD: 248 },
-    { item: 'Thermoplastic Road Marking & Reflective Studs', quantity: '12 linear meters', unitCostUSD: 15, totalUSD: 180 }
-  ];
+  // Category-specific fallback defects if visionDefects not provided by live scan
+  const defaultDefects = isRoad
+    ? [
+        {
+          defectType: 'Alligator Cracking & Asphalt Spalling',
+          dimensions: 'Length: 2.8m, Width: 1.6m, Depth: 14.5cm',
+          ircCodeStandard: 'IRC:82-2015 Pavement Maintenance Standard (Severity III)'
+        },
+        {
+          defectType: 'Sub-Base Soil Cavitation Void',
+          dimensions: 'Estimated cavity volume: 0.65 m³',
+          ircCodeStandard: 'IRC:37-2018 Structural Design of Flexible Pavements'
+        }
+      ]
+    : isWater
+    ? [
+        {
+          defectType: 'High-Pressure Cast Iron Water Main Rupture',
+          dimensions: 'Pipe Diameter: 300mm, Sub-Surface Void: 1.8 m³',
+          ircCodeStandard: 'CPHEEO Manual on Municipal Water Supply & IS 1536 Standard'
+        },
+        {
+          defectType: 'Sub-Grade Hydrodynamic Soil Erosion',
+          dimensions: 'Erosion Footprint: 3.5m x 2.2m along carriageway',
+          ircCodeStandard: 'IRC:SP:50-2013 Guidelines on Urban Drainage Design'
+        }
+      ]
+    : isElectric
+    ? [
+        {
+          defectType: '440V Overhead Conductor Snap & Ground Proximity',
+          dimensions: 'Span Length: 45m, Vertical Clearance: 1.2m from walkway',
+          ircCodeStandard: 'CEA (Measures Relating to Safety & Electric Supply) Reg 2010 (Rule 77)'
+        },
+        {
+          defectType: 'Fractured Support Arm & Ceramic Insulator Dislocation',
+          dimensions: 'Cross-Arm Displacement: 35 deg, Arc Flash Risk Zone: 4.0m',
+          ircCodeStandard: 'IS 5613 Code of Practice for Overhead Power Lines'
+        }
+      ]
+    : [
+        {
+          defectType: 'Commercial Construction Debris & Municipal Solid Waste Accumulation',
+          dimensions: 'Footprint: 25.0 sq.m, Estimated Volume: 12.5 cu.m',
+          ircCodeStandard: 'Solid Waste Management Rules 2016 (CPCB/APPCB Directives)'
+        },
+        {
+          defectType: 'Pedestrian Footpath Obstruction & Drainage Channel Clogging',
+          dimensions: 'Walkway Encroachment: 100%, Drain Choke Length: 8.0m',
+          ircCodeStandard: 'GMC Public Health & Sanitation Bylaws Act 1955'
+        }
+      ];
 
-  const totalCost = boq.reduce((sum, b) => sum + (b.totalUSD || 0), 0);
+  const defects = (ai.visionDefects && ai.visionDefects.length > 0) ? ai.visionDefects : defaultDefects;
+
+  // Category-specific BOQ table
+  const defaultBOQ = isRoad
+    ? [
+        { item: 'Cold Milling & Concrete Saw-Cutting', quantity: '4.5 sq.m', unitCostUSD: 40, totalUSD: 180 },
+        { item: 'Granular Sub-Base (GSB) Replacement & Vibro-Compaction', quantity: '1.2 cu.m', unitCostUSD: 120, totalUSD: 144 },
+        { item: 'Bituminous Concrete (BC) Hot Mix Overlay (40mm thickness)', quantity: '0.8 MT', unitCostUSD: 310, totalUSD: 248 },
+        { item: 'Thermoplastic Road Marking & Reflective Studs', quantity: '12 linear meters', unitCostUSD: 15, totalUSD: 180 }
+      ]
+    : isWater
+    ? [
+        { item: 'Emergency Hydraulic Dewatering & Sludge Pumping', quantity: '4.0 Hours', unitCostUSD: 65, totalUSD: 260 },
+        { item: 'Heavy-Duty 300mm Ductile Iron (DI) Split Collar Sleeve', quantity: '1 Unit', unitCostUSD: 320, totalUSD: 320 },
+        { item: 'Crushed Aggregate Bedding & Foundation Compaction', quantity: '2.5 cu.m', unitCostUSD: 85, totalUSD: 212 },
+        { item: 'Hydrostatic Pressure & Chlorinated Line Flush Testing', quantity: '1 Lumpsum', unitCostUSD: 150, totalUSD: 150 }
+      ]
+    : isElectric
+    ? [
+        { item: 'Emergency Feeder Isolation & Line Grounding Procedure', quantity: '1 Team Ops', unitCostUSD: 120, totalUSD: 120 },
+        { item: 'ACSR 50 sq.mm Conductor Re-Stringing & Tension Clamps', quantity: '45 meters', unitCostUSD: 8, totalUSD: 360 },
+        { item: '11kV/440V Pin Insulator & Galvanized Steel Cross-Arm', quantity: '2 Sets', unitCostUSD: 95, totalUSD: 190 },
+        { item: 'Megger Insulation Resistance & Dielectric Continuity Test', quantity: '1 Cert Test', unitCostUSD: 80, totalUSD: 80 }
+      ]
+    : [
+        { item: 'Hydraulic Backhoe Excavator (JCB) & Haulage Operations', quantity: '3.5 Hours', unitCostUSD: 70, totalUSD: 245 },
+        { item: '10-Ton Solid Waste Tipper Transport to GMC Landfill', quantity: '2 Trips', unitCostUSD: 110, totalUSD: 220 },
+        { item: 'High-Pressure Disinfection & Sodium Hypochlorite Spray', quantity: '120 sq.m', unitCostUSD: 1.2, totalUSD: 144 },
+        { item: 'Precast Concrete Footpath Slab Reset & Safety Bollards', quantity: '4 Units', unitCostUSD: 45, totalUSD: 180 }
+      ];
+
+  const boq = (ai.engineeringRecommendations?.billOfQuantities && ai.engineeringRecommendations.billOfQuantities.length > 0)
+    ? ai.engineeringRecommendations.billOfQuantities
+    : defaultBOQ;
+
+  const totalCostUSD = boq.reduce((sum, b) => sum + (b.totalUSD || 0), 0);
+  const totalCostINR = Math.round(totalCostUSD * 83.5);
 
   const handlePrint = () => {
     window.print();
@@ -186,7 +266,9 @@ export const EngineeringDossierModal = ({
                 ))}
                 <tr className="bg-white/5 font-bold text-white">
                   <td className="p-3 uppercase font-mono" colSpan={3}>Estimated Total Engineering Cost</td>
-                  <td className="p-3 font-mono text-right text-white text-sm drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">${totalCost || 752}.00 USD</td>
+                  <td className="p-3 font-mono text-right text-white text-sm drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">
+                    ₹{totalCostINR.toLocaleString()} <span className="text-xs font-normal text-zinc-300 font-mono">(${totalCostUSD}.00 USD)</span>
+                  </td>
                 </tr>
               </tbody>
             </table>

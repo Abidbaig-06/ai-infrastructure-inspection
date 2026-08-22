@@ -8,5 +8,6 @@ export const ROUTES = {
   COMPLAINT_APP_URL: '/report-issue',
   INSPECTOR_WORKSPACE: '/workspace',
   TRACK_TICKET: '/track',
-  ANALYTICS: '/analytics'
+  ANALYTICS: '/analytics',
+  MEE_BHOOMI_REGISTRY: '/land-registry'
 };

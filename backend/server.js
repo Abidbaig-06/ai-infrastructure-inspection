@@ -25,6 +25,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/work-orders', require('./routes/workOrders'));
 app.use('/api/ai-agent', require('./routes/aiAgent'));
+app.use('/api/land-assets', require('./routes/landAssets'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

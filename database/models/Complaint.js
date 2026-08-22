@@ -33,18 +33,24 @@ const ComplaintSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  multiAngleImages: {
+    front: { type: String, default: '' },
+    wide: { type: String, default: '' },
+    left: { type: String, default: '' },
+    right: { type: String, default: '' }
+  },
   location: {
     latitude: { type: Number, required: true },
     longitude: { type: Number, required: true },
     address: { type: String, required: true },
     landmark: { type: String, default: '' },
     ward: { type: String, required: true },
-    zone: { type: String, default: 'Zone A - Central Metro' },
-    pincode: { type: String, default: '10001' },
+    zone: { type: String, default: 'Zone 1 - Central Guntur' },
+    pincode: { type: String, default: '522002' },
   },
   citizen: {
-    name: { type: String, required: true },
-    phone: { type: String, required: true },
+    name: { type: String, default: 'GMC Citizen' },
+    phone: { type: String, default: 'N/A' },
     email: { type: String, default: '' },
     anonymous: { type: Boolean, default: false }
   },
