@@ -1,6 +1,6 @@
-const Complaint = require('../../database/models/Complaint');
+const Complaint = require('../models/Complaint');
 const { isUsingMongo, getMemoryDb } = require('../../database/connection');
-const { seedComplaints } = require('../../database/seed/seedData');
+const { seedComplaints } = require('../seed/seedData');
 
 // @desc Get comprehensive dashboard statistics, AI risk distribution, ward hotspots, and SLA compliance
 exports.getDashboardAnalytics = async (req, res) => {

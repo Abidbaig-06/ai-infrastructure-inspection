@@ -1,6 +1,6 @@
-const User = require('../../database/models/User');
+const User = require('../models/User');
 const { isUsingMongo, getMemoryDb, persistMemoryDb } = require('../../database/connection');
-const { seedUsers } = require('../../database/seed/seedData');
+const { seedUsers } = require('../seed/seedData');
 
 const initMemoryUsers = () => {
   const db = getMemoryDb();
@@ -35,33 +35,71 @@ exports.getDemoOfficers = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password, role } = req.body;
+    const cleanId = (email || '').trim();
+
+    if (!cleanId) {
+      return res.status(400).json({ success: false, message: 'Please provide an email or username' });
+    }
+
+    const cleanEmail = cleanId.toLowerCase();
 
     if (isUsingMongo()) {
-      let user = await User.findOne({ email: email.toLowerCase() });
+      let user = await User.findOne({
+        $or: [
+          { email: cleanEmail },
+          { email: { $regex: new RegExp(`^${cleanEmail.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}`, 'i') } },
+          { name: { $regex: new RegExp(cleanEmail.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&'), 'i') } }
+        ]
+      });
+
       if (!user) {
         // Find matching seed user or create on the fly for demo
-        const demo = seedUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+        const demo = seedUsers.find(u =>
+          u.email.toLowerCase() === cleanEmail ||
+          u.email.toLowerCase().startsWith(cleanEmail) ||
+          u.name.toLowerCase().includes(cleanEmail) ||
+          u.role.toLowerCase().includes(cleanEmail)
+        );
+
         if (demo) {
-          user = await User.create(demo);
+          try {
+            user = await User.create(demo);
+          } catch (err) {
+            user = demo;
+          }
         } else {
-          user = await User.create({
-            name: email.split('@')[0].toUpperCase(),
-            email: email.toLowerCase(),
-            password: password || 'demo',
-            role: role || 'DISPATCH_OFFICER',
-            department: 'Municipal Operations',
-            badgeNumber: 'OFF-' + Math.floor(1000 + Math.random() * 9000),
-            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-            assignedWards: ['All Wards']
-          });
+          try {
+            user = await User.create({
+              _id: 'usr_' + Date.now(),
+              name: cleanId.split('@')[0].toUpperCase(),
+              email: cleanEmail.includes('@') ? cleanEmail : `${cleanEmail}@civic.gov`,
+              password: password || 'demo',
+              role: role || 'DISPATCH_OFFICER',
+              department: 'GMC Municipal Operations Command',
+              badgeNumber: 'GMC-OFF-' + Math.floor(1000 + Math.random() * 9000),
+              avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+              assignedWards: ['All Guntur Wards']
+            });
+          } catch (err) {
+            user = {
+              _id: 'usr_' + Date.now(),
+              name: cleanId.split('@')[0].toUpperCase(),
+              email: cleanEmail.includes('@') ? cleanEmail : `${cleanEmail}@civic.gov`,
+              role: role || 'DISPATCH_OFFICER',
+              department: 'GMC Municipal Operations Command',
+              badgeNumber: 'GMC-OFF-' + Math.floor(1000 + Math.random() * 9000),
+              avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+              assignedWards: ['All Guntur Wards']
+            };
+          }
         }
       }
 
       return res.json({
         success: true,
-        token: 'jwt-civicpulse-token-' + user._id,
+        token: 'jwt-civicpulse-token-' + (user._id || user.id),
         user: {
-          id: user._id,
+          id: user._id || user.id,
           name: user.name,
           email: user.email,
           role: user.role,
@@ -73,17 +111,22 @@ exports.login = async (req, res) => {
       });
     } else {
       initMemoryUsers();
-      let user = getMemoryDb().users.find(u => u.email.toLowerCase() === email.toLowerCase());
+      let user = getMemoryDb().users.find(u =>
+        u.email.toLowerCase() === cleanEmail ||
+        u.email.toLowerCase().startsWith(cleanEmail) ||
+        u.name.toLowerCase().includes(cleanEmail)
+      );
+
       if (!user) {
         user = {
           _id: 'usr_' + Date.now(),
-          name: email.split('@')[0],
-          email: email.toLowerCase(),
+          name: cleanId.split('@')[0],
+          email: cleanEmail.includes('@') ? cleanEmail : `${cleanEmail}@civic.gov`,
           role: role || 'DISPATCH_OFFICER',
-          department: 'Municipal Operations Command',
-          badgeNumber: 'OFF-' + Math.floor(1000 + Math.random() * 9000),
+          department: 'GMC Municipal Operations Command',
+          badgeNumber: 'GMC-OFF-' + Math.floor(1000 + Math.random() * 9000),
           avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-          assignedWards: ['All Wards']
+          assignedWards: ['All Guntur Wards']
         };
         getMemoryDb().users.push(user);
         persistMemoryDb();
@@ -106,6 +149,6 @@ exports.login = async (req, res) => {
     }
   } catch (err) {
     console.error('Error during login:', err);
-    res.status(500).json({ success: false, message: 'Login failed' });
+    res.status(500).json({ success: false, message: 'Login failed: ' + err.message });
   }
 };

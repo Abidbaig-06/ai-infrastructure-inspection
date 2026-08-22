@@ -37,24 +37,43 @@ const loadMemoryDb = () => {
       memoryDb = JSON.parse(data);
       console.log(`[Storage] Loaded ${memoryDb.complaints?.length || 0} complaints from persistent store.`);
     }
+    if (!memoryDb.complaints || memoryDb.complaints.length === 0) {
+      const { seedUsers, seedComplaints, seedWorkOrders } = require('../backend/seed/seedData');
+      memoryDb.users = seedUsers || [];
+      memoryDb.complaints = seedComplaints || [];
+      memoryDb.workOrders = seedWorkOrders || [];
+      persistMemoryDb();
+      console.log(`[Storage] Auto-populated memory DB with ${memoryDb.complaints.length} complaints.`);
+    }
   } catch (err) {
     console.error('Error loading memory DB:', err.message);
   }
 };
 
+// Immediately load memory DB
+loadMemoryDb();
+
 const connectDB = async () => {
-  const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/civicpulse';
+  const mongoUri = process.env.MONGODB_URI;
+  if (!mongoUri || process.env.USE_MONGO !== 'true') {
+    isMongoConnected = false;
+    console.log('[Database] Running in Zero-Setup High-Speed Local JSON Engine (Ready instantly).');
+    return;
+  }
+
   try {
+    if (!mongoose) throw new Error('Mongoose not installed');
     await mongoose.connect(mongoUri, {
       serverSelectionTimeoutMS: 2000,
+      connectTimeoutMS: 2000,
+      bufferCommands: false,
     });
     isMongoConnected = true;
     console.log(`[MongoDB] Connected successfully to ${mongoUri}`);
   } catch (err) {
     isMongoConnected = false;
     console.log('[Database] MongoDB not reachable at', mongoUri);
-    console.log('[Database] Activating Resilient In-Memory & Local JSON Database Engine (Zero Setup Mode).');
-    loadMemoryDb();
+    console.log('[Database] Running in Zero-Setup High-Speed Local JSON Engine.');
   }
 };
 

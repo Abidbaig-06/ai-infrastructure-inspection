@@ -43,10 +43,14 @@ app.get('/', (req, res) => {
 
 // Start Server & Connect DB
 const startServer = async () => {
-  await connectDB();
   app.listen(PORT, () => {
     console.log(`[CivicPulse Server] Running on http://localhost:${PORT}`);
   });
+  try {
+    await connectDB();
+  } catch (err) {
+    console.log('[Database] Error in DB initialization:', err.message);
+  }
 };
 
 startServer();

@@ -1,7 +1,7 @@
-const WorkOrder = require('../../database/models/WorkOrder');
-const Complaint = require('../../database/models/Complaint');
+const WorkOrder = require('../models/WorkOrder');
+const Complaint = require('../models/Complaint');
 const { isUsingMongo, getMemoryDb, persistMemoryDb } = require('../../database/connection');
-const { seedWorkOrders } = require('../../database/seed/seedData');
+const { seedWorkOrders } = require('../seed/seedData');
 
 const initMemoryWorkOrders = () => {
   const db = getMemoryDb();
@@ -21,6 +21,14 @@ const generateWorkOrderNumber = () => {
 exports.getWorkOrders = async (req, res) => {
   try {
     if (isUsingMongo()) {
+      const currentTotal = await WorkOrder.countDocuments();
+      if (currentTotal === 0) {
+        try {
+          await WorkOrder.insertMany(seedWorkOrders);
+        } catch (e) {
+          console.error('Auto-seed work orders error:', e.message);
+        }
+      }
       const orders = await WorkOrder.find().sort({ createdAt: -1 });
       return res.json({ success: true, count: orders.length, data: orders });
     } else {

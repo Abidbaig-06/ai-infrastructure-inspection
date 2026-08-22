@@ -20,12 +20,12 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import { Building3DBackground } from '../components/common/Building3DBackground';
 import L from 'leaflet';
 
 const customPin = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
@@ -33,32 +33,38 @@ const customPin = new L.Icon({
 });
 
 export const TrackTicketPage = () => {
-  const { ticketId } = useParams();
+  const { ticketId: routeTicketId } = useParams();
+  const [searchInput, setSearchInput] = useState(routeTicketId || '');
   const [complaint, setComplaint] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [searchInput, setSearchInput] = useState(ticketId || '');
-  const [rating, setRating] = useState(5);
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [feedbackSuccess, setFeedbackSuccess] = useState(false);
 
   useEffect(() => {
-    if (ticketId) {
-      loadTicket(ticketId);
+    if (routeTicketId) {
+      handleSearch(routeTicketId);
     }
-  }, [ticketId]);
+  }, [routeTicketId]);
 
-  const loadTicket = async (id) => {
+  const handleSearch = async (idToSearch) => {
+    const cleanId = (idToSearch || searchInput).trim().toUpperCase();
+    if (!cleanId) return;
+
     setLoading(true);
-    setError(null);
+    setError('');
     try {
-      const res = await fetchComplaintByTicket(id);
-      if (res.success && res.data) {
-        setComplaint(res.data);
+      const data = await fetchComplaintByTicket(cleanId);
+      if (data) {
+        setComplaint(data);
       } else {
-        setError('Grievance ticket not found. Please verify the Ticket ID.');
+        setError(`No ticket found matching ID "${cleanId}". Please check and retry.`);
+        setComplaint(null);
       }
     } catch (err) {
-      setError('Ticket not found. Check ID format (e.g. CP-2026-9812).');
+      setError(`Failed to retrieve ticket "${cleanId}". Record not found.`);
+      setComplaint(null);
     } finally {
       setLoading(false);
     }
@@ -66,8 +72,13 @@ export const TrackTicketPage = () => {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    if (searchInput.trim()) {
-      loadTicket(searchInput.trim().toUpperCase());
+    handleSearch(searchInput);
+  };
+
+  const handleFeedbackSubmit = (e) => {
+    e.preventDefault();
+    if (feedbackRating > 0) {
+      setFeedbackSuccess(true);
     }
   };
 
@@ -93,17 +104,20 @@ export const TrackTicketPage = () => {
   const currentStep = complaint ? getStepIndex(complaint.status) : 0;
 
   return (
-    <div className="min-h-screen flex flex-col bg-obsidian-rock text-zinc-100 relative">
+    <div className="min-h-screen flex flex-col bg-obsidian-rock text-zinc-100 relative overflow-hidden">
+      {/* 3D Rotating Cracked Building Background */}
+      <Building3DBackground isDamaged={true} />
+
       <Header />
 
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 space-y-6">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 space-y-6 relative z-10">
         {/* Top Search Bar & Back button */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-2 border-b border-white/10">
+        <div className="obsidian-pill-glass p-3 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border border-white/10 shadow-lg backdrop-blur-md">
           <Link
             to={ROUTES.HOME}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-400 hover:text-white transition-colors"
+            className="inline-flex items-center gap-2 text-xs font-semibold text-zinc-300 hover:text-white transition-colors group px-2"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform text-zinc-400 group-hover:text-white" />
             <span>Return to INFRASPECTION Portal</span>
           </Link>
 

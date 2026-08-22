@@ -1,7 +1,7 @@
-const Complaint = require('../../database/models/Complaint');
+const Complaint = require('../models/Complaint');
 const { isUsingMongo, getMemoryDb, persistMemoryDb } = require('../../database/connection');
 const { analyzeComplaintAI } = require('../services/aiAnalysisEngine');
-const { seedComplaints } = require('../../database/seed/seedData');
+const { seedComplaints } = require('../seed/seedData');
 
 // Initialize memory db complaints if empty
 const initMemoryComplaints = () => {
@@ -25,6 +25,15 @@ exports.getComplaints = async (req, res) => {
     const { category, severity, status, ward, search, sortBy, limit = 50 } = req.query;
 
     if (isUsingMongo()) {
+      const currentTotal = await Complaint.countDocuments();
+      if (currentTotal === 0) {
+        try {
+          await Complaint.insertMany(seedComplaints);
+        } catch (e) {
+          console.error('Auto-seed complaints error:', e.message);
+        }
+      }
+
       let query = {};
       if (category && category !== 'ALL') query.category = category;
       if (severity && severity !== 'ALL') query['aiAnalysis.severity'] = severity;

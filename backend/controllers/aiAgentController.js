@@ -5,9 +5,9 @@ const {
   getAllAssetsList,
   assetMaintenanceHistory
 } = require('../../ai-agents');
-const Complaint = require('../../database/models/Complaint');
+const Complaint = require('../models/Complaint');
 const { isUsingMongo, getMemoryDb } = require('../../database/connection');
-const { seedComplaints } = require('../../database/seed/seedData');
+const { seedComplaints } = require('../seed/seedData');
 
 // @desc Run Multimodal Inspection on an Image + Report
 exports.inspectAsset = async (req, res) => {

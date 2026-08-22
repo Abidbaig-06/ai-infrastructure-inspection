@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const ComplaintSchema = new mongoose.Schema({
+  _id: { type: String, default: () => 'cmp_' + Date.now() + '_' + Math.floor(Math.random() * 1000) },
   ticketId: {
     type: String,
     required: true,

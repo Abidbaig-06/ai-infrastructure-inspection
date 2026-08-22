@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const WorkOrderSchema = new mongoose.Schema({
+  _id: { type: String, default: () => 'wo_' + Date.now() + '_' + Math.floor(Math.random() * 1000) },
   workOrderNumber: {
     type: String,
     required: true,

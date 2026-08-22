@@ -1,28 +1,20 @@
 import React from 'react';
 import { ComplaintButton } from './ComplaintButton';
 import { InspectorLogin } from './InspectorLogin';
+import { Building3DBackground } from './common/Building3DBackground';
 import { ShieldCheck, Database, Cpu, MapPin } from 'lucide-react';
 
 export const HeroSection = () => {
   return (
-    <section className="relative overflow-hidden pt-12 pb-16 sm:py-20 lg:py-24 border-b border-white/10">
-      {/* Ethereal Ambient White Light Glow Orbs */}
-      <div className="absolute -top-10 right-1/4 w-[500px] h-[500px] bg-white/[0.08] rounded-full blur-[140px] pointer-events-none animate-white-light-1" />
-      <div className="absolute bottom-0 left-10 w-[450px] h-[450px] bg-white/[0.04] rounded-full blur-[120px] pointer-events-none animate-white-light-2" />
+    <section className="relative overflow-hidden pt-12 pb-16 sm:py-20 lg:py-24 border-b border-white/10 min-h-[680px] flex items-center">
+      {/* 3D Rotating Architectural Building & Cityscape Canvas */}
+      <Building3DBackground />
 
-      {/* Structural Geometry Vector in Pure White / Silver */}
-      <svg
-        className="absolute inset-0 w-full h-full pointer-events-none opacity-15"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <line x1="8%" y1="18%" x2="38%" y2="82%" stroke="#ffffff" strokeWidth="1" strokeDasharray="4 6" />
-        <line x1="38%" y1="82%" x2="82%" y2="28%" stroke="#ffffff" strokeWidth="1" strokeDasharray="4 6" />
-        <circle cx="8%" cy="18%" r="3.5" fill="#ffffff" />
-        <circle cx="38%" cy="82%" r="3.5" fill="#ffffff" />
-        <circle cx="82%" cy="28%" r="3.5" fill="#ffffff" />
-      </svg>
+      {/* Subtle Ethereal Ambient White Glow Orbs */}
+      <div className="absolute -top-10 right-1/4 w-[500px] h-[500px] bg-white/[0.05] rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-0 left-10 w-[450px] h-[450px] bg-white/[0.03] rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10 w-full">
         {/* 2-Column Desktop Grid Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
           {/* Left Column: Core Identity, Headline, Supporting Copy, Action & Status */}
