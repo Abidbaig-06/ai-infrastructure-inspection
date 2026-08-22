@@ -1,0 +1,62 @@
+export const sampleHazards = [
+  {
+    id: 'sample-pothole',
+    category: 'Road Hazard & Pothole',
+    title: 'Severe 15cm Pothole on Lakshmipuram Main Road',
+    description: 'Deep road crater with jagged asphalt edges on Lakshmipuram Main Road near Hindu Pharmacy College. Multiple vehicles and two-wheelers swerving into oncoming traffic causing near-miss collisions. Sub-base aggregate visibly eroded.',
+    imageUrl: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800&auto=format&fit=crop&q=80',
+    ward: 'Ward 04 - Lakshmipuram',
+    zone: 'Zone 2 - Guntur West',
+    address: 'Lakshmipuram Main Road, near Hindu Pharmacy College',
+    landmark: 'Opposite Union Bank of India Branch',
+    pincode: '522007',
+    latitude: 16.3125,
+    longitude: 80.4280,
+    badge: 'Lakshmipuram Pothole'
+  },
+  {
+    id: 'sample-water',
+    category: 'Water Leak & Sewage',
+    title: 'High-Pressure Water Main Burst in Brodipet',
+    description: 'Underground municipal drinking water pipeline ruptured at high pressure along Brodipet 4th Line. Water is flooding commercial shop entrances and eroding road foundation near Guntur Railway Station.',
+    imageUrl: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&auto=format&fit=crop&q=80',
+    ward: 'Ward 02 - Brodipet',
+    zone: 'Zone 1 - Guntur Central',
+    address: 'Brodipet 4th Line, Main Commercial Avenue',
+    landmark: 'Near Guntur Railway Station East Gate',
+    pincode: '522002',
+    latitude: 16.3080,
+    longitude: 80.4420,
+    badge: 'Brodipet Water Burst'
+  },
+  {
+    id: 'sample-wire',
+    category: 'Electrical & Live Wire',
+    title: 'Exposed High-Voltage Cable Near Arundelpet Rythu Bazaar',
+    description: 'Thunderstorm snapped overhead support arm. 440V line dangling within arm reach above pedestrian walkway right near Arundelpet Rythu Bazaar entrance.',
+    imageUrl: 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=800&auto=format&fit=crop&q=80',
+    ward: 'Ward 01 - Arundelpet Central',
+    zone: 'Zone 1 - Guntur Central',
+    address: '12th Line Arundelpet, near Rythu Bazaar',
+    landmark: 'Adjacent to Municipal High School Playground',
+    pincode: '522002',
+    latitude: 16.3040,
+    longitude: 80.4480,
+    badge: 'Arundelpet Live Wire'
+  },
+  {
+    id: 'sample-waste',
+    category: 'Waste & Garbage Dumping',
+    title: 'Illegal Commercial Debris & Garbage near Old Guntur Bus Stand',
+    description: 'Massive accumulation of commercial construction debris and domestic solid waste blocking the pedestrian footpath near Jinnah Tower Center.',
+    imageUrl: 'https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=800&auto=format&fit=crop&q=80',
+    ward: 'Ward 08 - Old Guntur',
+    zone: 'Zone 3 - Guntur East',
+    address: 'Old Guntur Trunk Road, near RTC Old Bus Stand',
+    landmark: 'Near Jinnah Tower Center Plaza',
+    pincode: '522001',
+    latitude: 16.2980,
+    longitude: 80.4550,
+    badge: 'Old Guntur Debris'
+  }
+];

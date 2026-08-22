@@ -1,0 +1,22 @@
+{
+  "name": "h2",
+  "version": "1.0.0",
+  "description": "> **Domain:** Infrastructure / Computer Vision / Predictive AI / Municipal Public Works   > **Deployment City:** Guntur Municipal Corporation (GMC), Andhra Pradesh (`16.3067° N, 80.4365° E`)   > **Core Objective:** Autonomous inspection agent combining visual defect detection, multimodal reports, GIS location mapping, maintenance history retrieval, and resource-aware prioritization.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mongoose": "^8.24.4",
+    "multer": "^2.2.0"
+  }
+}
