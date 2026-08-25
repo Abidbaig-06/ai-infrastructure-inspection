@@ -13,6 +13,7 @@ import { AIAnalysisModal } from '../components/agent/AIAnalysisModal';
 import { DispatchCrewModal } from '../components/agent/DispatchCrewModal';
 import { WorkOrderModal } from '../components/agent/WorkOrderModal';
 import { EngineeringDossierModal } from '../components/agent/EngineeringDossierModal';
+import { InfraspectionAIAssistantBot } from '../components/agent/InfraspectionAIAssistantBot';
 import { useGrievance } from '../context/GrievanceContext';
 import { useAuth } from '../context/AuthContext';
 import { sampleHazards } from '../services/sampleHazards';
@@ -34,7 +35,7 @@ import {
 } from 'lucide-react';
 
 export const InspectionWorkspacePage = () => {
-  const { complaints, selectComplaint, selectedComplaint } = useGrievance();
+  const { complaints, selectComplaint, setSelectedComplaint, selectedComplaint } = useGrievance();
   const { currentUser } = useAuth();
 
   // Navigation tab order: 1: 'satellite-map' | 2: 'cv-inspector' | 3: 'history' | 4: 'prioritizer'
@@ -51,22 +52,18 @@ export const InspectionWorkspacePage = () => {
   const [dossierModalOpen, setDossierModalOpen] = useState(false);
 
   const handleInspectComplaint = (c) => {
-    selectComplaint(c);
-    setSelectedTicket(c);
-    if (c.category?.includes('Road') || c.category?.includes('Pothole')) {
-      setSelectedAssetId('R-104');
-    } else if (c.category?.includes('Water') || c.category?.includes('Sewage')) {
-      setSelectedAssetId('W-009');
-    } else if (c.category?.includes('Electrical') || c.category?.includes('Wire')) {
-      setSelectedAssetId('E-044');
-    } else if (c.category?.includes('Drainage') || c.category?.includes('Waste')) {
-      setSelectedAssetId('D-018');
+    if (!c) return;
+    if (typeof selectComplaint === 'function') {
+      selectComplaint(c);
+    } else if (typeof setSelectedComplaint === 'function') {
+      setSelectedComplaint(c);
     }
-    // Launch the AI Agent Inspection Workspace directly for the selected issue
-    setActiveTab('cv-inspector');
+    setSelectedTicket(c);
+    setAnalysisModalOpen(true);
   };
 
   const runInspection = async (sample) => {
+    if (!sample) return;
     setIsScanning(true);
     try {
       const res = await inspectInfrastructureAI({
@@ -75,10 +72,10 @@ export const InspectionWorkspacePage = () => {
         description: sample.description,
         category: sample.category,
         location: {
-          ward: sample.ward,
-          latitude: sample.latitude,
-          longitude: sample.longitude,
-          address: sample.address
+          ward: sample.ward || sample.location?.ward,
+          latitude: sample.latitude || sample.location?.latitude,
+          longitude: sample.longitude || sample.location?.longitude,
+          address: sample.address || sample.location?.address
         },
         reportedSeverity: 'CRITICAL'
       });
@@ -93,7 +90,10 @@ export const InspectionWorkspacePage = () => {
   };
 
   const getActiveComplaintForDossier = () => {
-    if (activeTab === 'cv-inspector' && selectedSample) {
+    if (selectedTicket) {
+      return selectedTicket;
+    }
+    if (selectedSample) {
       return {
         ticketId: selectedSample.relatedComplaints?.[0]?.ticketId || `INSP-${selectedSample.id?.toUpperCase()}`,
         title: selectedSample.title,
@@ -121,7 +121,7 @@ export const InspectionWorkspacePage = () => {
         }
       };
     }
-    return selectedTicket || selectedComplaint || complaints[0];
+    return selectedComplaint || complaints[0];
   };
 
   const activeComplaintItem = getActiveComplaintForDossier();
@@ -130,7 +130,7 @@ export const InspectionWorkspacePage = () => {
     <div className="min-h-screen flex flex-col bg-obsidian-rock text-zinc-100 relative">
       <Header />
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 w-full">
+      <main className="flex-1 max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 w-full">
         {/* Top Control Bar with Glassy White Light Border */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-white/15">
           <div className="flex items-center gap-3">
@@ -178,24 +178,7 @@ export const InspectionWorkspacePage = () => {
               <span>🛰️ Aerial Satellite (Red Dots)</span>
             </button>
 
-            {/* Position 2: AI Vision & Defect Detection */}
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('cv-inspector');
-                if (!inspectionResult) runInspection(selectedSample);
-              }}
-              className={`px-4 py-2 rounded-xl font-black transition-all flex items-center gap-2 text-xs cursor-pointer ${
-                activeTab === 'cv-inspector'
-                  ? 'white-gloss-btn shadow-lg'
-                  : 'text-zinc-400 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              <Scan className="w-3.5 h-3.5" />
-              <span>AI Vision & Defect Detection</span>
-            </button>
-
-            {/* Position 3: Asset Maintenance History (Reordered to 3rd position) */}
+            {/* Position 2: Asset Maintenance History */}
             <button
               type="button"
               onClick={() => setActiveTab('history')}
@@ -229,37 +212,52 @@ export const InspectionWorkspacePage = () => {
           </span>
         </div>
 
-        {/* TAB 1: SATELLITE MAP WITH PULSING RED DOTS & FOCUSED EVIDENCE ALERT CARDS */}
+        {/* TAB 1: SATELLITE MAP WITH SIDEBAR EVIDENCE FEED (SIDE-BY-SIDE SPLIT LAYOUT) */}
         {activeTab === 'satellite-map' && (
-          <div className="space-y-6">
-            <RealLifeSatelliteMap
-              complaints={complaints}
-              onSelectComplaint={handleInspectComplaint}
-              selectedComplaintId={selectedTicket?.ticketId}
-              height="540px"
-            />
-
-            {/* Complaints Feed Grid: Focused on Issue, Related Image, Reporter Source, Location, Related Complaint */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-ping inline-block" />
-                  <span>Reported Issues & Evidence Feed ({complaints.length} Registered in Guntur)</span>
-                </h4>
-                <span className="text-xs text-zinc-400 font-mono">
-                  Evidence-Linked Field Intelligence
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left Sidebar Column: Reported Issues & Evidence Feed */}
+            <div className="lg:col-span-5 xl:col-span-4 flex flex-col space-y-3.5">
+              <div className="charcoal-glass rounded-2xl p-3.5 border border-white/15 flex items-center justify-between shadow-lg">
+                <div className="flex items-center gap-2.5">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 shadow-[0_0_8px_#ef4444]"></span>
+                  </span>
+                  <div>
+                    <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-white">
+                      Reported Issues & Evidence Feed
+                    </h4>
+                    <span className="text-[10px] text-zinc-400 font-mono">
+                      Field Intelligence & Citizen Reports
+                    </span>
+                  </div>
+                </div>
+                <span className="obsidian-pill-glass px-2.5 py-1 text-[10px] font-mono font-bold text-red-400 border border-red-500/30 bg-red-500/10">
+                  {complaints.length} Registered
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Vertical Scrollable Feed Cards */}
+              <div className="space-y-2.5 max-h-[820px] overflow-y-auto pr-1.5 custom-scrollbar">
                 {complaints.map((c) => (
                   <AlertDefectCard
                     key={c.ticketId}
                     complaint={c}
                     onInspect={handleInspectComplaint}
+                    isSelected={selectedTicket?.ticketId === c.ticketId}
                   />
                 ))}
               </div>
+            </div>
+
+            {/* Right Column: Real-Life Satellite Map with Pulsing Red Dots */}
+            <div className="lg:col-span-7 xl:col-span-8 lg:sticky lg:top-6">
+              <RealLifeSatelliteMap
+                complaints={complaints}
+                onSelectComplaint={handleInspectComplaint}
+                selectedComplaintId={selectedTicket?.ticketId}
+                height="820px"
+              />
             </div>
           </div>
         )}
@@ -325,7 +323,18 @@ export const InspectionWorkspacePage = () => {
         {/* TAB 3: ASSET MAINTENANCE HISTORY (3RD POSITION) */}
         {activeTab === 'history' && (
           <div className="text-zinc-100">
-            <MaintenanceHistoryDrawer activeAssetId={selectedAssetId} />
+            <MaintenanceHistoryDrawer
+              activeAssetId={selectedAssetId}
+              onInspectTicket={(c) => {
+                if (typeof selectComplaint === 'function') {
+                  selectComplaint(c);
+                } else if (typeof setSelectedComplaint === 'function') {
+                  setSelectedComplaint(c);
+                }
+                setSelectedTicket(c);
+                setAnalysisModalOpen(true);
+              }}
+            />
           </div>
         )}
 
@@ -334,7 +343,11 @@ export const InspectionWorkspacePage = () => {
           <div className="text-zinc-100">
             <MaintenancePrioritizer
               onSelectComplaint={(c) => {
-                selectComplaint(c);
+                if (typeof selectComplaint === 'function') {
+                  selectComplaint(c);
+                } else if (typeof setSelectedComplaint === 'function') {
+                  setSelectedComplaint(c);
+                }
                 setSelectedTicket(c);
                 setDossierModalOpen(true);
               }}
@@ -380,6 +393,9 @@ export const InspectionWorkspacePage = () => {
           />
         </>
       )}
+
+      {/* Floating AI Guide Assistant (Only in Authorized Workspace) */}
+      <InfraspectionAIAssistantBot />
 
       <Footer />
     </div>

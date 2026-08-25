@@ -44,7 +44,7 @@ export const DispatchCrewModal = ({ complaint, isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[9999] overflow-y-auto bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
       <div className="charcoal-glass rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-white/25 animate-in fade-in zoom-in-95 text-zinc-100 relative">
         {/* Top Specular White Beam */}
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-white/80 to-transparent" />

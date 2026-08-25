@@ -33,7 +33,7 @@ import {
 
 export const AIAgentInspectionPage = () => {
   const { user } = useAuth();
-  const { complaints, selectComplaint, selectedComplaint } = useGrievance();
+  const { complaints, selectComplaint, setSelectedComplaint, selectedComplaint } = useGrievance();
 
   const [activeTab, setActiveTab] = useState('inspector'); // 'inspector' | 'prioritize' | 'history' | 'gis'
   const [selectedSample, setSelectedSample] = useState(sampleHazards[0]);

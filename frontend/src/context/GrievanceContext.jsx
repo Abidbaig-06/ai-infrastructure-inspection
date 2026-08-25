@@ -176,6 +176,7 @@ export const GrievanceProvider = ({ children }) => {
         setFilters,
         selectedComplaint,
         setSelectedComplaint,
+        selectComplaint: setSelectedComplaint,
         isAiModalOpen,
         setIsAiModalOpen,
         isDispatchModalOpen,

@@ -53,13 +53,13 @@ export const AIAnalysisModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
-      <div className="charcoal-glass rounded-3xl max-w-4xl w-full overflow-hidden shadow-2xl border border-white/25 animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[92vh] text-zinc-100 relative">
+    <div className="fixed inset-0 z-[9999] bg-black/85 flex items-center justify-center p-3 sm:p-5">
+      <div className="charcoal-glass rounded-3xl max-w-4xl w-full overflow-hidden shadow-2xl border border-white/25 flex flex-col max-h-[90vh] text-zinc-100 relative" style={{ transform: 'translateZ(0)' }}>
         {/* Top Specular White Light Beam */}
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-white/80 to-transparent" />
 
         {/* Modal Header */}
-        <div className="p-6 flex items-center justify-between gap-4 border-b border-white/10">
+        <div className="p-6 flex items-center justify-between gap-4 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white shadow-inner">
               <Sparkles className="w-5 h-5 drop-shadow-[0_0_6px_#ffffff]" />
@@ -81,14 +81,14 @@ export const AIAnalysisModal = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl charcoal-pill hover:border-white/50 text-zinc-400 hover:text-white transition-colors"
+            className="p-2 rounded-xl charcoal-pill hover:border-white/50 text-zinc-400 hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Modal Scrollable Body */}
-        <div className="p-6 overflow-y-auto space-y-6">
+        {/* Modal Scrollable Body with smooth hardware acceleration */}
+        <div className="p-6 overflow-y-auto overscroll-contain space-y-6 flex-1" style={{ WebkitOverflowScrolling: 'touch' }}>
           {/* Top Grid: Image with Vision Detection Overlay & Risk Index Meter */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
             {/* Left: Image with Vision Defect Overlay */}

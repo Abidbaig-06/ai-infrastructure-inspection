@@ -15,8 +15,76 @@ import {
   TrendingDown,
   Clock,
   ShieldAlert,
-  User
+  User,
+  ExternalLink,
+  Zap,
+  Activity
 } from 'lucide-react';
+import { useGrievance } from '../../context/GrievanceContext';
+
+const matchesAsset = (complaint, assetId) => {
+  if (!complaint) return false;
+  const cCat = (complaint.category || '').toLowerCase();
+  const cTitle = (complaint.title || '').toLowerCase();
+  const cDesc = (complaint.description || '').toLowerCase();
+  const cWard = (complaint.location?.ward || '').toLowerCase();
+  const cAddr = (complaint.location?.address || '').toLowerCase();
+
+  switch (assetId) {
+    case 'R-104':
+      return (
+        cCat.includes('road') ||
+        cCat.includes('pothole') ||
+        cCat.includes('asphalt') ||
+        cTitle.includes('road') ||
+        cTitle.includes('pothole') ||
+        cWard.includes('lakshmipuram') ||
+        cWard.includes('ward 04') ||
+        cAddr.includes('lakshmipuram')
+      );
+    case 'W-009':
+      return (
+        cCat.includes('water') ||
+        cCat.includes('pipe') ||
+        cCat.includes('leak') ||
+        cTitle.includes('water') ||
+        cTitle.includes('pipeline') ||
+        cWard.includes('brodipet') ||
+        cWard.includes('ward 02') ||
+        cAddr.includes('brodipet')
+      );
+    case 'E-044':
+      return (
+        cCat.includes('electrical') ||
+        cCat.includes('power') ||
+        cCat.includes('cable') ||
+        cCat.includes('streetlamp') ||
+        cTitle.includes('wire') ||
+        cTitle.includes('cable') ||
+        cTitle.includes('power') ||
+        cTitle.includes('streetlamp') ||
+        cWard.includes('arundelpet') ||
+        cWard.includes('pattabhipuram') ||
+        cWard.includes('ward 01') ||
+        cWard.includes('ward 07')
+      );
+    case 'D-018':
+      return (
+        cCat.includes('drain') ||
+        cCat.includes('waste') ||
+        cCat.includes('sewage') ||
+        cCat.includes('sanitation') ||
+        cCat.includes('garbage') ||
+        cTitle.includes('drain') ||
+        cTitle.includes('garbage') ||
+        cTitle.includes('waste') ||
+        cWard.includes('old guntur') ||
+        cWard.includes('ward 08')
+      );
+    default:
+      return false;
+  }
+};
 
 const ASSETS_REGISTRY = {
   'R-104': {
@@ -310,7 +378,8 @@ const ASSETS_REGISTRY = {
   }
 };
 
-export const MaintenanceHistoryDrawer = ({ activeAssetId = 'R-104' }) => {
+export const MaintenanceHistoryDrawer = ({ activeAssetId = 'R-104', onInspectTicket }) => {
+  const { complaints, setSelectedComplaint } = useGrievance();
   const [selectedAssetKey, setSelectedAssetKey] = useState(
     ASSETS_REGISTRY[activeAssetId] ? activeAssetId : 'R-104'
   );
@@ -319,6 +388,12 @@ export const MaintenanceHistoryDrawer = ({ activeAssetId = 'R-104' }) => {
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   const asset = ASSETS_REGISTRY[selectedAssetKey] || ASSETS_REGISTRY['R-104'];
+
+  // Dynamically linked grievances for this asset
+  const liveLinkedComplaints = (complaints || []).filter(c => matchesAsset(c, selectedAssetKey));
+  const hasActiveCriticalIssues = liveLinkedComplaints.some(
+    c => c.aiAnalysis?.severity === 'CRITICAL' || c.aiAnalysis?.riskScore >= 75
+  );
 
   // Filter repairs
   const filteredRepairs = asset.repairs.filter((r) => {
@@ -416,8 +491,8 @@ export const MaintenanceHistoryDrawer = ({ activeAssetId = 'R-104' }) => {
           <div className="flex items-center gap-3">
             <div className="text-right font-mono">
               <span className="text-[10px] text-zinc-400 uppercase block">Current Condition</span>
-              <span className={`px-3 py-1 rounded-full text-xs font-black border ${asset.conditionBadgeColor} inline-block mt-0.5`}>
-                {asset.currentCondition}
+              <span className={`px-3 py-1 rounded-full text-xs font-black border ${hasActiveCriticalIssues ? 'bg-red-950 text-red-300 border-red-800 animate-pulse' : asset.conditionBadgeColor} inline-block mt-0.5`}>
+                {hasActiveCriticalIssues ? 'CRITICAL (ACTIVE HAZARD)' : asset.currentCondition}
               </span>
             </div>
           </div>
@@ -432,8 +507,8 @@ export const MaintenanceHistoryDrawer = ({ activeAssetId = 'R-104' }) => {
 
           <div className="p-3 rounded-xl bg-black/40 border border-white/10">
             <span className="text-[10px] text-zinc-400 block uppercase">Next Maintenance Due</span>
-            <p className={`text-sm font-bold mt-1 ${asset.nextMaintenanceDue === 'OVERDUE' ? 'text-red-400 animate-pulse' : 'text-white'}`}>
-              {asset.nextMaintenanceDue}
+            <p className={`text-sm font-bold mt-1 ${asset.nextMaintenanceDue === 'OVERDUE' || hasActiveCriticalIssues ? 'text-red-400 animate-pulse' : 'text-white'}`}>
+              {hasActiveCriticalIssues ? 'URGENT AI ACTION' : asset.nextMaintenanceDue}
             </p>
           </div>
 
@@ -443,12 +518,89 @@ export const MaintenanceHistoryDrawer = ({ activeAssetId = 'R-104' }) => {
           </div>
 
           <div className="p-3 rounded-xl bg-black/40 border border-white/10">
-            <span className="text-[10px] text-zinc-400 block uppercase">Recurring Failures</span>
-            <p className="text-sm font-bold text-amber-300 mt-1">
-              {asset.previousIssues.reduce((acc, curr) => acc + curr.count, 0)} Recorded
+            <span className="text-[10px] text-zinc-400 block uppercase">Active Linked Incidents</span>
+            <p className="text-sm font-bold text-cyan-300 mt-1">
+              {liveLinkedComplaints.length} Live Tickets
             </p>
           </div>
         </div>
+      </div>
+
+      {/* 0. LIVE AUTOMATED INCIDENTS & CITIZEN GRIEVANCE FEED */}
+      <div className="charcoal-glass-card rounded-2xl p-5 border border-cyan-500/30 space-y-4 relative overflow-hidden">
+        <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.4)]">
+              <Activity className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-bold text-white font-display">
+                  Live Registered Defect Feed (Automated Ingestion)
+                </h4>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-950 text-cyan-300 border border-cyan-800 animate-pulse">
+                  {liveLinkedComplaints.length} Linked Tickets
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-400 font-mono">
+                Real-time citizen grievances and sensor logs automatically mapped to {asset.assetId} corridor
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {liveLinkedComplaints.length === 0 ? (
+          <div className="text-center py-6 text-xs text-zinc-500 font-mono">
+            No unaddressed grievances currently open for this asset corridor.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {liveLinkedComplaints.map((c) => (
+              <div
+                key={c._id || c.ticketId}
+                className="p-3.5 rounded-xl bg-black/60 border border-white/15 hover:border-white/40 transition-all flex gap-3 text-xs justify-between items-center group"
+              >
+                <div className="flex gap-3 items-center min-w-0">
+                  {c.imageUrl && (
+                    <img
+                      src={c.imageUrl}
+                      alt="Evidence"
+                      className="w-12 h-12 rounded-lg object-cover border border-white/20 shrink-0"
+                    />
+                  )}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-mono text-[11px] font-bold text-cyan-300">{c.ticketId}</span>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase border ${
+                        c.aiAnalysis?.severity === 'CRITICAL'
+                          ? 'bg-red-950 text-red-300 border-red-800'
+                          : 'bg-amber-950 text-amber-300 border-amber-800'
+                      }`}>
+                        {c.aiAnalysis?.severity || 'ACTIVE'} • Risk {c.aiAnalysis?.riskScore || 80}/100
+                      </span>
+                    </div>
+                    <h5 className="font-bold text-white line-clamp-1 text-xs">{c.title}</h5>
+                    <p className="text-[10px] text-zinc-400 font-mono line-clamp-1 mt-0.5">
+                      {c.location?.address || c.location?.ward}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof setSelectedComplaint === 'function') setSelectedComplaint(c);
+                    if (typeof onInspectTicket === 'function') onInspectTicket(c);
+                  }}
+                  className="px-3 py-2 rounded-xl charcoal-pill hover:border-white text-zinc-300 hover:text-white transition-all text-[10px] font-mono font-bold shrink-0 flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Inspect</span>
+                  <ExternalLink className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* FILTER & SEARCH BAR */}

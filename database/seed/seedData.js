@@ -370,7 +370,7 @@ const seedComplaints = [
     title: 'Cluster of 6 Non-Operational Streetlamps on Pattabhipuram Main Road',
     description: 'Continuous 200m dark stretch along Pattabhipuram Ring Road near NTR Stadium due to blown master fuse. Morning and evening walkers feel unsafe.',
     category: 'Street Lighting',
-    imageUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1508873696983-2df5293cb32f?w=800&auto=format&fit=crop&q=80',
     location: {
       latitude: 16.3190,
       longitude: 80.4210,
@@ -441,7 +441,7 @@ const seedComplaints = [
     resolutionProof: {
       resolvedAt: new Date(Date.now() - 3600 * 1000 * 8).toISOString(),
       resolvedBy: 'Lineman Jordan Bell (Badge GMC-ELEC-302)',
-      beforeImageUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&auto=format&fit=crop&q=80',
+      beforeImageUrl: 'https://images.unsplash.com/photo-1508873696983-2df5293cb32f?w=800&auto=format&fit=crop&q=80',
       afterImageUrl: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=800&auto=format&fit=crop&q=80',
       resolutionNotes: 'All 6 luminaires in Pattabhipuram operational. 45 Lux achieved.',
       citizenFeedbackRating: 5

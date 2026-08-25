@@ -123,7 +123,7 @@ export const EngineeringDossierModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
+    <div className="fixed inset-0 z-[9999] overflow-y-auto bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
       <div className="charcoal-glass rounded-3xl max-w-4xl w-full overflow-hidden shadow-2xl border border-white/25 animate-in fade-in zoom-in-95 flex flex-col max-h-[92vh] text-zinc-100 relative">
         {/* Top Specular White Beam */}
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-white/80 to-transparent no-print" />

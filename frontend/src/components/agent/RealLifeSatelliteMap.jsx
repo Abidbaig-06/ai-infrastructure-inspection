@@ -38,21 +38,54 @@ const createPulsingRedDotIcon = (severity, isSelected) => {
   });
 };
 
-function MapRecenter({ center, zoom }) {
-  const map = useMap();
-  useEffect(() => {
-    if (center) {
-      map.flyTo(center, zoom || 15, { animate: true, duration: 1.2 });
+// Smoothly center the map so the popup card lands right in the dead-center of the screen
+const centerOnMarkerPopup = (map, lat, lng) => {
+  if (!map || !lat || !lng) return;
+  const zoom = Math.max(map.getZoom(), 16);
+  const point = map.project([lat, lng], zoom);
+  // Offset by 190px north so the entire 300px popup box is in the vertical center of the map
+  const targetPoint = L.point(point.x, point.y - 190);
+  const centerLatLng = map.unproject(targetPoint, zoom);
+  map.flyTo(centerLatLng, zoom, {
+    animate: true,
+    duration: 0.65,
+    easeLinearity: 0.25
+  });
+};
+
+// Disperse overlapping GPS coordinates in a clean radial offset (~100m) so all complaint pins are distinct
+const getSpiderfiedComplaints = (items = []) => {
+  const coordMap = new Map();
+  return items.map((c) => {
+    if (!c.location?.latitude || !c.location?.longitude) return c;
+    const baseKey = `${Number(c.location.latitude).toFixed(4)}_${Number(c.location.longitude).toFixed(4)}`;
+    const count = coordMap.get(baseKey) || 0;
+    coordMap.set(baseKey, count + 1);
+
+    if (count === 0) {
+      return {
+        ...c,
+        _displayLat: Number(c.location.latitude),
+        _displayLng: Number(c.location.longitude)
+      };
     }
-  }, [center, zoom, map]);
-  return null;
-}
+
+    // Radial cluster offset
+    const angle = (count * (2 * Math.PI)) / 5;
+    const offset = 0.0012 * Math.ceil(count / 5);
+    return {
+      ...c,
+      _displayLat: Number(c.location.latitude) + offset * Math.sin(angle),
+      _displayLng: Number(c.location.longitude) + offset * Math.cos(angle) * 1.15
+    };
+  });
+};
 
 export const RealLifeSatelliteMap = ({
   complaints = [],
   onSelectComplaint,
   selectedComplaintId,
-  height = '560px'
+  height = '600px'
 }) => {
   const [mapType, setMapType] = useState('satellite');
   const [activeComplaint, setActiveComplaint] = useState(null);
@@ -71,10 +104,12 @@ export const RealLifeSatelliteMap = ({
     osm: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
   };
 
+  const displayedComplaints = React.useMemo(() => getSpiderfiedComplaints(complaints), [complaints]);
+
   const currentCenter = selectedComplaintId
     ? (() => {
-        const found = complaints.find(c => (c.ticketId === selectedComplaintId || c._id === selectedComplaintId));
-        return found?.location?.latitude ? [found.location.latitude, found.location.longitude] : gunturCenter;
+        const found = displayedComplaints.find(c => (c.ticketId === selectedComplaintId || c._id === selectedComplaintId));
+        return found?._displayLat ? [found._displayLat, found._displayLng] : gunturCenter;
       })()
     : gunturCenter;
 
@@ -133,7 +168,7 @@ export const RealLifeSatelliteMap = ({
           <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600 shadow-[0_0_8px_#ef4444]"></span>
         </span>
         <span className="font-mono font-bold text-red-400">
-          {complaints.filter(c => c.status !== 'RESOLVED').length} Active Red Dots Pinned
+          {displayedComplaints.filter(c => c.status !== 'RESOLVED').length} Active Red Dots Pinned
         </span>
       </div>
 
@@ -143,7 +178,7 @@ export const RealLifeSatelliteMap = ({
           center={currentCenter}
           zoom={14}
           scrollWheelZoom={true}
-          className="h-full w-full z-10"
+          className="h-full w-full z-0"
         >
           <TileLayer
             key={mapType}
@@ -152,33 +187,43 @@ export const RealLifeSatelliteMap = ({
             maxZoom={19}
           />
 
-          <MapRecenter center={currentCenter} zoom={15} />
-
-          {complaints.map((c) => {
-            if (!c.location?.latitude || !c.location?.longitude) return null;
+          {displayedComplaints.map((c) => {
+            if (!c._displayLat || !c._displayLng) return null;
             const isSelected = selectedComplaintId === c.ticketId || selectedComplaintId === c._id;
             const severity = c.aiAnalysis?.severity || 'MEDIUM';
 
             return (
               <Marker
                 key={c.ticketId || c._id}
-                position={[c.location.latitude, c.location.longitude]}
+                position={[c._displayLat, c._displayLng]}
                 icon={createPulsingRedDotIcon(severity, isSelected)}
                 eventHandlers={{
-                  click: () => {
+                  click: (e) => {
                     setActiveComplaint(c);
-                    if (onSelectComplaint) onSelectComplaint(c);
+                    const map = e.target?._map;
+                    centerOnMarkerPopup(map, c._displayLat, c._displayLng);
                   }
                 }}
               >
-                <Popup className="custom-leaflet-popup">
+                <Popup
+                  className="custom-leaflet-popup"
+                  autoPan={false}
+                  offset={[0, -10]}
+                  closeButton={true}
+                >
                   <div className="p-1 max-w-xs space-y-2 text-xs">
                     {c.imageUrl && (
-                      <img
-                        src={c.imageUrl}
-                        alt="Hazard"
-                        className="w-full h-28 object-cover rounded-xl border border-slate-200"
-                      />
+                      <div
+                        onClick={() => onSelectComplaint && onSelectComplaint(c)}
+                        className="cursor-pointer hover:opacity-90 transition-opacity"
+                        title="Click to launch AI Vision inspection"
+                      >
+                        <img
+                          src={c.imageUrl}
+                          alt="Hazard"
+                          className="w-full h-28 object-cover rounded-xl border border-slate-200"
+                        />
+                      </div>
                     )}
                     <div>
                       <div className="flex items-center justify-between">
@@ -199,10 +244,13 @@ export const RealLifeSatelliteMap = ({
 
                     <button
                       type="button"
-                      onClick={() => onSelectComplaint && onSelectComplaint(c)}
-                      className="w-full py-2 white-gloss-btn text-black font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onSelectComplaint) onSelectComplaint(c);
+                      }}
+                      className="w-full py-2.5 white-gloss-btn text-black font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer hover:opacity-95 active:scale-95"
                     >
-                      <Scan className="w-3.5 h-3.5 text-black" />
+                      <Scan className="w-4 h-4 text-black" />
                       <span>AI Vision & Defect Detection</span>
                     </button>
                   </div>
@@ -220,7 +268,7 @@ export const RealLifeSatelliteMap = ({
           <span>GUNTUR CITY GIS • LAT: 16.3067° N, LNG: 80.4365° E • RESOLUTION: 0.3m/px</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-zinc-400">Click any <strong className="text-red-400 font-bold">Red Dot</strong> to inspect structural defect</span>
+          <span className="text-zinc-400">Touch/Click any <strong className="text-red-400 font-bold">Red Dot</strong> to center & inspect defect</span>
         </div>
       </div>
     </div>

@@ -1,6 +1,95 @@
 {
   "complaints": [
     {
+      "ticketId": "CP-2026-7161",
+      "title": "pithole",
+      "description": "[AI VISION ASSESSMENT]: Visual inspection of uploaded photo confirmed severe alligator cracking with sub-base cavitation measuring ~2.8m length, 1.6m width, and 14.5cm depth. High vehicle axle damage and collision hazard on active carriageway. Immediate emergency full-depth cold milling & bituminous compaction required under IRC:82-2015 standards. Citizen notes: \"pithole\"",
+      "category": "Road Hazard & Pothole",
+      "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Newport_Whitepit_Lane_pot_hole.JPG/330px-Newport_Whitepit_Lane_pot_hole.JPG?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "multiAngleImages": {},
+      "location": {
+        "latitude": 16.3067,
+        "longitude": 80.4365,
+        "address": "atgraham",
+        "landmark": "",
+        "ward": "Ward 22 - AT Agraharam & Sivalayam Street",
+        "zone": "Zone 1 - Central Guntur",
+        "pincode": "522004"
+      },
+      "citizen": {
+        "name": "GMC Citizen",
+        "phone": "N/A",
+        "email": "",
+        "anonymous": false
+      },
+      "status": "AI_TRIAGED",
+      "aiAnalysis": {
+        "severity": "MEDIUM",
+        "riskScore": 56,
+        "urgencyLevel": "Standard Maintenance (<72h)",
+        "slaHours": 72,
+        "targetResolutionTime": "2026-08-25T10:23:24.514Z",
+        "assignedDepartment": "Department of Transportation & Roads",
+        "detectedHazards": [
+          "Asphalt sub-base degradation detected",
+          "Potential vehicle tire/suspension damage hazard",
+          "Water ingress accelerating road surface cratering"
+        ],
+        "recommendedEquipment": [
+          "Asphalt Hot-Box Unit",
+          "Plate Compactor",
+          "2-Ton Vibratory Roller",
+          "Quick-Cure Cold Mix"
+        ],
+        "estimatedCost": {
+          "min": 250,
+          "max": 600,
+          "currency": "USD"
+        },
+        "safetyPrecaution": "Standard barrier and traffic cone deployment required.",
+        "confidenceScore": 0.94,
+        "summaryReport": "AI Triage Engine evaluated Road Hazard & Pothole incident in Ward 22 - AT Agraharam & Sivalayam Street. Classified as [MEDIUM] severity with composite Risk Index of 56/100. Primary vector: Asphalt sub-base degradation detected. Automated SLA target set to 72 hours under Department of Transportation & Roads.",
+        "analyzedAt": "2026-08-22T10:23:24.514Z",
+        "engineVersion": "CivicPulse-Vision-v3.4-Neural"
+      },
+      "assignedCrew": {
+        "crewId": null,
+        "teamLead": null,
+        "contactPhone": null,
+        "dispatchedAt": null,
+        "etaMinutes": null,
+        "status": "UNASSIGNED"
+      },
+      "workOrderRef": null,
+      "timeline": [
+        {
+          "action": "Citizen Grievance Registered",
+          "by": "GMC Citizen",
+          "timestamp": "2026-08-22T10:23:24.514Z",
+          "note": "Registered with Guntur GPS coordinates (16.3067, 80.4365)",
+          "badgeColor": "blue"
+        },
+        {
+          "action": "AI Vision & Hazard Triage Completed",
+          "by": "CivicPulse Neural Triage Engine",
+          "timestamp": "2026-08-22T10:23:24.514Z",
+          "note": "Classified as MEDIUM severity (Risk Score: 56/100). SLA: 72h.",
+          "badgeColor": "green"
+        }
+      ],
+      "resolutionProof": {
+        "resolvedAt": null,
+        "resolvedBy": null,
+        "beforeImageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Newport_Whitepit_Lane_pot_hole.JPG/330px-Newport_Whitepit_Lane_pot_hole.JPG?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+        "afterImageUrl": "",
+        "resolutionNotes": "",
+        "citizenFeedbackRating": null
+      },
+      "createdAt": "2026-08-22T10:23:24.514Z",
+      "updatedAt": "2026-08-22T10:23:24.514Z",
+      "_id": "cmp_1787394204514"
+    },
+    {
       "ticketId": "CP-2026-3292",
       "title": "pothole",
       "description": "[AI VISION ASSESSMENT]: Visual inspection of uploaded photo confirmed severe alligator cracking with sub-base cavitation measuring ~2.8m length, 1.6m width, and 14.5cm depth. High vehicle axle damage and collision hazard on active carriageway. Immediate emergency full-depth cold milling & bituminous compaction required under IRC:82-2015 standards. Citizen notes: \"pothole\"",
@@ -727,7 +816,7 @@
       "title": "Cluster of 6 Non-Operational Streetlamps on Pattabhipuram Main Road",
       "description": "Continuous 200m dark stretch along Pattabhipuram Ring Road near NTR Stadium due to blown master fuse. Morning and evening walkers feel unsafe.",
       "category": "Street Lighting",
-      "imageUrl": "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&auto=format&fit=crop&q=80",
+      "imageUrl": "https://images.unsplash.com/photo-1508873696983-2df5293cb32f?w=800&auto=format&fit=crop&q=80",
       "location": {
         "latitude": 16.319,
         "longitude": 80.421,
@@ -806,7 +895,7 @@
       "resolutionProof": {
         "resolvedAt": "2026-08-21T09:39:06.985Z",
         "resolvedBy": "Lineman Jordan Bell (Badge GMC-ELEC-302)",
-        "beforeImageUrl": "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&auto=format&fit=crop&q=80",
+        "beforeImageUrl": "https://images.unsplash.com/photo-1508873696983-2df5293cb32f?w=800&auto=format&fit=crop&q=80",
         "afterImageUrl": "https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=800&auto=format&fit=crop&q=80",
         "resolutionNotes": "All 6 luminaires in Pattabhipuram operational. 45 Lux achieved.",
         "citizenFeedbackRating": 5

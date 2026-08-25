@@ -295,7 +295,7 @@ export const AIAgentInspectionWorkspace = ({
             </span>
 
             <p className="text-zinc-200 font-sans leading-relaxed text-[12px]">
-              "Visual inspection confirms significant <strong>{detectedDefects[0].type}</strong> ({detectedDefects[0].size}) with surrounding structural fatigue. High commercial traffic exposure combined with upcoming monsoon runoff creates immediate sub-base cavitation risk."
+              "Visual inspection confirms significant <strong>{detectedDefects?.[0]?.type || 'Structural Defect'}</strong> ({detectedDefects?.[0]?.size || 'Severe anomaly area'}) with surrounding structural fatigue. High commercial traffic exposure combined with upcoming monsoon runoff creates immediate sub-base cavitation risk."
             </p>
 
             <div className="pt-2 border-t border-white/10 space-y-1 text-[11px] text-zinc-300">

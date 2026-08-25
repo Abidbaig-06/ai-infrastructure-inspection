@@ -39,45 +39,35 @@
   background-position: 0 0, 0 0, 0 0;
 }
 
-/* Charcoal Glass Panel (Frosted Charcoal with Specular White Light Highlight) */
+/* Charcoal Glass Panel (Frosted Charcoal with High GPU Performance) */
 .charcoal-glass {
-  background: rgba(16, 16, 22, 0.52);
-  backdrop-filter: blur(36px) saturate(180%);
-  -webkit-backdrop-filter: blur(36px) saturate(180%);
+  background: rgba(14, 14, 20, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: 
     0 25px 60px -15px rgba(0, 0, 0, 0.9),
     inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.38),
     inset 0 -1px 1px 0 rgba(0, 0, 0, 0.4);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .charcoal-glass:hover {
   border-color: rgba(255, 255, 255, 0.28);
-  box-shadow: 
-    0 30px 70px -15px rgba(0, 0, 0, 0.95),
-    0 0 35px rgba(255, 255, 255, 0.1),
-    inset 0 1px 2px 0 rgba(255, 255, 255, 0.5);
 }
 
 /* Obsidian Glass Card */
 .charcoal-glass-card {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.06) 0%, rgba(18, 18, 24, 0.6) 100%);
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  background: rgba(20, 20, 28, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 
     0 16px 40px rgba(0, 0, 0, 0.65),
     inset 0 1px 1px rgba(255, 255, 255, 0.25);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: border-color 0.2s ease;
 }
 
 .charcoal-glass-card:hover {
   border-color: rgba(255, 255, 255, 0.35);
-  box-shadow: 
-    0 22px 50px rgba(0, 0, 0, 0.8),
-    0 0 25px rgba(255, 255, 255, 0.12),
-    inset 0 1px 2px rgba(255, 255, 255, 0.4);
 }
 
 /* Pill Glass Capsule (Exactly like the volume & theme bars in the reference image) */
@@ -242,6 +232,15 @@
   border: none !important;
 }
 
+.custom-leaflet-popup {
+  pointer-events: auto !important;
+  z-index: 500 !important;
+}
+
+.leaflet-popup-pane {
+  z-index: 500 !important;
+}
+
 .custom-leaflet-popup .leaflet-popup-content-wrapper {
   background: rgba(18, 18, 24, 0.95);
   backdrop-filter: blur(20px);
@@ -254,6 +253,19 @@
 .custom-leaflet-popup .leaflet-popup-tip {
   background: rgba(18, 18, 24, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.custom-leaflet-popup a.leaflet-popup-close-button {
+  color: #ffffff !important;
+  padding: 8px 10px !important;
+  font-size: 16px !important;
+  font-weight: bold !important;
+  transition: all 0.2s ease !important;
+}
+
+.custom-leaflet-popup a.leaflet-popup-close-button:hover {
+  color: #ef4444 !important;
+  transform: scale(1.15) !important;
 }
 
 .pulse-marker-wrapper {
