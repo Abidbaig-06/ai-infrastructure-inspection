@@ -1,3 +1,114 @@
 {
-  "complaints": []
+  "complaints": [],
+  "workOrders": [
+    {
+      "_id": "wo_01",
+      "workOrderNumber": "WO-2026-0419",
+      "complaintTicketId": "CP-2026-9812",
+      "title": "Emergency Asphalt Resurfacing & Deep Sub-Base Grouting - Lakshmipuram",
+      "department": "GMC Roads & Highway Engineering Wing",
+      "priority": "EMERGENCY",
+      "status": "IN_EXECUTION",
+      "assignedContractor": {
+        "companyName": "Guntur Infrastructure & Civil Works Ltd",
+        "leadEngineer": "Marcus Vance",
+        "contact": "+91 98491 00234",
+        "teamSize": 5
+      },
+      "siteLocation": {
+        "address": "Lakshmipuram Main Road, near Hindu Pharmacy College",
+        "ward": "Ward 04 - Lakshmipuram",
+        "coordinates": {
+          "latitude": 16.3125,
+          "longitude": 80.428
+        }
+      },
+      "scopeOfWork": [
+        "Mill and saw-cut damaged asphalt perimeter (3.2m x 2.4m) on Lakshmipuram Road",
+        "Excavate degraded wet sub-base aggregate to 20cm depth",
+        "Apply quick-curing hydraulic aggregate base with vibro-compaction",
+        "Apply hot polymer asphalt overlay and seal joints with rubberized bitumen"
+      ],
+      "safetyChecklist": [
+        {
+          "item": "Deploy high-visibility Type-III traffic barricades on Lakshmipuram Road",
+          "verified": true
+        },
+        {
+          "item": "Position dynamic LED arrow board 50m upstream",
+          "verified": true
+        },
+        {
+          "item": "Personal Protective Equipment (Hardhats, Hi-Vis Class 3, Steel-toe boots)",
+          "verified": true
+        },
+        {
+          "item": "Underground gas/telecom line clearance scanned with GMC utility map",
+          "verified": true
+        }
+      ],
+      "estimatedBudget": {
+        "labor": 450,
+        "materials": 550,
+        "machinery": 200,
+        "total": 1200,
+        "currency": "USD"
+      },
+      "issuedBy": {
+        "officerName": "Dr. Aris Thorne",
+        "designation": "Executive Engineer, GMC",
+        "badgeNumber": "GMC-ENG-8821"
+      },
+      "scheduledStart": "2026-08-28T12:59:18.670Z",
+      "deadline": "2026-08-28T17:29:18.670Z",
+      "completedAt": null,
+      "createdAt": "2026-08-28T12:59:18.670Z",
+      "updatedAt": "2026-08-28T12:59:18.670Z"
+    }
+  ],
+  "users": [
+    {
+      "_id": "usr_01",
+      "name": "Dr. Aris Thorne (EE, GMC)",
+      "email": "engineer@civic.gov",
+      "password": "demo",
+      "role": "SENIOR_ENGINEER",
+      "department": "Guntur Municipal Corporation (GMC) - Public Works",
+      "badgeNumber": "GMC-ENG-8821",
+      "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+      "assignedWards": [
+        "Ward 04 - Lakshmipuram",
+        "Ward 02 - Brodipet",
+        "Ward 07 - Gorantla"
+      ]
+    },
+    {
+      "_id": "usr_02",
+      "name": "Sarah Jenkins",
+      "email": "triage@civic.gov",
+      "password": "demo",
+      "role": "DISPATCH_OFFICER",
+      "department": "GMC Emergency AI Dispatch Control Room",
+      "badgeNumber": "GMC-DSP-4019",
+      "avatar": "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80",
+      "assignedWards": [
+        "Ward 01 - Arundelpet",
+        "Ward 03 - Kothapet",
+        "Ward 05 - Pattabhipuram"
+      ]
+    },
+    {
+      "_id": "usr_03",
+      "name": "Marcus Vance",
+      "email": "field@civic.gov",
+      "password": "demo",
+      "role": "FIELD_SUPERVISOR",
+      "department": "GMC Rapid Pavement & Maintenance Unit",
+      "badgeNumber": "GMC-FLD-2910",
+      "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+      "assignedWards": [
+        "All Guntur Wards"
+      ]
+    }
+  ]
 }

@@ -41,7 +41,7 @@ export const AIAgentInspectionWorkspace = ({
   const [showHeatmap, setShowHeatmap] = useState(false);
 
   // Opens the Repo 2 AI Agent in a new tab and hands off the complaint image with auto-scan
-  const AI_AGENT_URL = 'http://127.0.0.1:8765/';
+  const AI_AGENT_URL = (import.meta.env.VITE_AI_AGENT_URL || 'http://127.0.0.1:8765') + '/';
   const handleOpenAIAgent = () => {
     const agentWindow = window.open(AI_AGENT_URL, 'ai-infra-agent');
     if (!agentWindow) {

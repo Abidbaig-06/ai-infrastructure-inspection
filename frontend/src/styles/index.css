@@ -42,8 +42,8 @@
 /* Charcoal Glass Panel (Frosted Charcoal with High GPU Performance) */
 .charcoal-glass {
   background: rgba(14, 14, 20, 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow:
     0 25px 60px -15px rgba(0, 0, 0, 0.9),
@@ -51,6 +51,15 @@
     inset 0 -1px 1px 0 rgba(0, 0, 0, 0.4);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
+
+/* Airier "liquid glass": give panels and cards a touch more inner room
+   and softer corners so nested pills/cards are not shrink-wrapped. */
+.charcoal-glass { border-radius: 1.5rem; }
+.charcoal-glass-card { border-radius: 1.25rem; }
+
+/* Loosen vertical rhythm inside the dense inspector cockpit */
+.workspace-cockpit > * + * { margin-top: 1rem; }
+.workspace-cockpit .cockpit-pane { padding: 1rem; }
 
 .charcoal-glass:hover {
   border-color: rgba(255, 255, 255, 0.28);
@@ -232,13 +241,25 @@
   border: none !important;
 }
 
+/* Keep the popup card above markers, tooltips and map overlay chrome so it
+   is fully visible AND clickable (Leaflet marker-pane defaults to 600). */
 .custom-leaflet-popup {
   pointer-events: auto !important;
-  z-index: 500 !important;
+  z-index: 1000 !important;
 }
 
 .leaflet-popup-pane {
-  z-index: 500 !important;
+  z-index: 1000 !important;
+}
+
+.leaflet-popup {
+  pointer-events: auto !important;
+}
+
+.custom-leaflet-popup .leaflet-popup-content-wrapper,
+.custom-leaflet-popup .leaflet-popup-content,
+.custom-leaflet-popup .leaflet-popup-content * {
+  pointer-events: auto !important;
 }
 
 .custom-leaflet-popup .leaflet-popup-content-wrapper {

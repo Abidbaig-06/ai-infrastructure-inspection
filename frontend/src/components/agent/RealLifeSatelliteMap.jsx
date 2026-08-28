@@ -97,11 +97,37 @@ const MapResizer = () => {
   return null;
 };
 
+// Recenter the map whenever the target center changes after first render
+const MapRecenter = ({ center }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (center && center[0] && center[1]) {
+      map.flyTo(center, Math.max(map.getZoom(), 15), { animate: true, duration: 0.6 });
+    }
+  }, [center?.[0], center?.[1]]);
+  return null;
+};
+
+// Blue "you are here" dot for the logged-in officer's geolocation
+const createUserLocationIcon = () =>
+  L.divIcon({
+    className: 'custom-user-loc-marker',
+    html: `
+      <div class="relative flex items-center justify-center w-8 h-8">
+        <span class="animate-ping absolute inline-flex h-6 w-6 rounded-full bg-sky-400 opacity-70"></span>
+        <span class="relative inline-flex rounded-full h-4 w-4 bg-sky-500 border-2 border-white shadow-[0_0_10px_#38bdf8]"></span>
+      </div>
+    `,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16]
+  });
+
 export const RealLifeSatelliteMap = ({
   complaints = [],
   onSelectComplaint,
   onOpenAiVision,
   selectedComplaintId,
+  userLocation = null,
   height = '100%'
 }) => {
   const [mapType, setMapType] = useState('satellite');
@@ -128,7 +154,7 @@ export const RealLifeSatelliteMap = ({
       const found = displayedComplaints.find(c => (c.ticketId === selectedComplaintId || c._id === selectedComplaintId));
       return found?._displayLat ? [found._displayLat, found._displayLng] : gunturCenter;
     })()
-    : gunturCenter;
+    : (userLocation ? [userLocation.lat, userLocation.lng] : gunturCenter);
 
   return (
     <div className="relative rounded-3xl overflow-hidden border border-white/20 shadow-2xl bg-black w-full h-full flex flex-col min-h-0">
@@ -199,12 +225,30 @@ export const RealLifeSatelliteMap = ({
           className="h-full w-full z-0"
         >
           <MapResizer />
+          <MapRecenter center={currentCenter} />
           <TileLayer
             key={mapType}
             attribution={attributions[mapType]}
             url={mapTileUrls[mapType]}
             maxZoom={19}
           />
+
+          {userLocation && (
+            <Marker
+              position={[userLocation.lat, userLocation.lng]}
+              icon={createUserLocationIcon()}
+              zIndexOffset={1000}
+            >
+              <Popup className="custom-leaflet-popup" autoPan={false}>
+                <div className="p-1 text-xs font-mono text-zinc-800">
+                  <strong>Your current location</strong>
+                  <div className="text-[10px] text-slate-500 mt-0.5">
+                    {userLocation.lat.toFixed(4)}°, {userLocation.lng.toFixed(4)}°
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          )}
 
           {displayedComplaints.map((c) => {
             if (!c._displayLat || !c._displayLng) return null;

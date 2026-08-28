@@ -52,6 +52,77 @@ export const InspectionWorkspacePage = () => {
   const [dossierModalOpen, setDossierModalOpen] = useState(false);
   const topRef = React.useRef(null);
 
+  // Auto-locate the logged-in officer and surface the nearest open grievance
+  const [userLocation, setUserLocation] = useState(null);
+  const [nearestTicketId, setNearestTicketId] = useState(null);
+  const autoLocatedRef = React.useRef(false);
+
+  const haversineKm = (a, b) => {
+    const R = 6371;
+    const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+    const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+    const lat1 = (a.lat * Math.PI) / 180;
+    const lat2 = (b.lat * Math.PI) / 180;
+    const h =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  };
+
+  React.useEffect(() => {
+    if (autoLocatedRef.current) return;
+    if (!currentUser) return;
+    if (!('geolocation' in navigator)) return;
+    autoLocatedRef.current = true;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      (err) => console.warn('Geolocation denied/unavailable:', err.message),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+    );
+  }, [currentUser]);
+
+  React.useEffect(() => {
+    if (!userLocation || !complaints || complaints.length === 0) return;
+    let best = null;
+    let bestDist = Infinity;
+    complaints.forEach((c) => {
+      const lat = Number(c.location?.latitude);
+      const lng = Number(c.location?.longitude);
+      if (!lat || !lng) return;
+      if (c.status === 'RESOLVED') return;
+      const d = haversineKm(userLocation, { lat, lng });
+      if (d < bestDist) {
+        bestDist = d;
+        best = c;
+      }
+    });
+    if (best) {
+      setNearestTicketId(best.ticketId);
+      setSelectedTicket(best);
+      if (typeof selectComplaint === 'function') selectComplaint(best);
+    }
+  }, [userLocation, complaints]);
+
+  // Live AI Vision agent (Python SAM 2 / Grounding DINO server) reachability
+  const AI_AGENT_BASE = import.meta.env.VITE_AI_AGENT_URL || 'http://127.0.0.1:8765';
+  const [agentStatus, setAgentStatus] = useState('checking'); // 'checking' | 'online' | 'offline'
+
+  const probeAgent = React.useCallback(() => {
+    setAgentStatus('checking');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
+    fetch(`${AI_AGENT_BASE}/`, { mode: 'no-cors', signal: controller.signal })
+      .then(() => setAgentStatus('online'))
+      .catch(() => setAgentStatus('offline'))
+      .finally(() => clearTimeout(timer));
+  }, [AI_AGENT_BASE]);
+
+  React.useEffect(() => {
+    if (activeTab === 'cv-inspector') probeAgent();
+  }, [activeTab, probeAgent]);
+
   const getActiveComplaintForDossier = () => {
     if (selectedTicket) {
       return selectedTicket;
@@ -203,9 +274,9 @@ export const InspectionWorkspacePage = () => {
       <div ref={topRef} className="absolute top-0 left-0 h-0 w-0 pointer-events-none" />
       <Header />
 
-      <main className="flex-1 min-h-0 max-w-[1360px] mx-auto px-4 sm:px-6 py-2 flex flex-col space-y-2 w-full overflow-hidden">
+      <main className="flex-1 min-h-0 max-w-[1440px] mx-auto px-4 sm:px-8 py-4 flex flex-col space-y-4 w-full overflow-hidden">
         {/* Top Control Bar with Glassy White Light Border */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-2 border-b border-white/15 flex-shrink-0">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-white/15 flex-shrink-0">
           <div className="flex items-center gap-3">
             <Link
               to={ROUTES.HOME}
@@ -225,18 +296,18 @@ export const InspectionWorkspacePage = () => {
         </div>
 
         {/* Master Cockpit Bounding Card (Enclosing Tabs, Evidence Feed & Satellite Map) */}
-        <div className="charcoal-glass rounded-[2rem] p-3 sm:p-3.5 border border-white/15 shadow-2xl flex flex-col flex-1 min-h-0 relative overflow-hidden space-y-2.5">
+        <div className="charcoal-glass rounded-[2rem] p-4 sm:p-6 border border-white/15 shadow-2xl flex flex-col flex-1 min-h-0 relative overflow-hidden space-y-4">
           {/* Top Specular White Light Accent Line */}
           <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-white/80 to-transparent" />
 
           {/* Workspace Navigation Tabs Header inside the box */}
-          <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-white/10 text-xs flex-shrink-0">
-            <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10 text-xs flex-shrink-0">
+            <div className="flex flex-wrap gap-2">
               {/* Position 1: Aerial Satellite */}
               <button
                 type="button"
                 onClick={() => setActiveTab('satellite-map')}
-                className={`px-3.5 py-1.5 rounded-xl font-black transition-all flex items-center gap-2 text-xs cursor-pointer ${activeTab === 'satellite-map'
+                className={`px-4 py-2.5 rounded-xl font-black transition-all flex items-center gap-2 text-xs cursor-pointer ${activeTab === 'satellite-map'
                     ? 'white-gloss-btn shadow-lg'
                     : 'text-zinc-400 hover:text-white hover:bg-white/10'
                   }`}
@@ -272,7 +343,7 @@ export const InspectionWorkspacePage = () => {
                     }
                   }, 100);
                 }}
-                className={`px-3.5 py-1.5 rounded-xl font-black transition-all flex items-center gap-2 text-xs cursor-pointer ${activeTab === 'cv-inspector'
+                className={`px-4 py-2.5 rounded-xl font-black transition-all flex items-center gap-2 text-xs cursor-pointer ${activeTab === 'cv-inspector'
                     ? 'white-gloss-btn shadow-lg'
                     : 'text-zinc-400 hover:text-white hover:bg-white/10'
                   }`}
@@ -285,7 +356,7 @@ export const InspectionWorkspacePage = () => {
               <button
                 type="button"
                 onClick={() => setActiveTab('history')}
-                className={`px-3.5 py-1.5 rounded-xl font-black transition-all flex items-center gap-2 text-xs cursor-pointer ${activeTab === 'history'
+                className={`px-4 py-2.5 rounded-xl font-black transition-all flex items-center gap-2 text-xs cursor-pointer ${activeTab === 'history'
                     ? 'white-gloss-btn shadow-lg'
                     : 'text-zinc-400 hover:text-white hover:bg-white/10'
                   }`}
@@ -298,7 +369,7 @@ export const InspectionWorkspacePage = () => {
               <button
                 type="button"
                 onClick={() => setActiveTab('prioritizer')}
-                className={`px-3.5 py-1.5 rounded-xl font-black transition-all flex items-center gap-2 text-xs cursor-pointer ${activeTab === 'prioritizer'
+                className={`px-4 py-2.5 rounded-xl font-black transition-all flex items-center gap-2 text-xs cursor-pointer ${activeTab === 'prioritizer'
                     ? 'white-gloss-btn shadow-lg'
                     : 'text-zinc-400 hover:text-white hover:bg-white/10'
                   }`}
@@ -330,15 +401,37 @@ export const InspectionWorkspacePage = () => {
                   </span>
                 </div>
 
+                {nearestTicketId && (
+                  <div className="mb-2 flex-shrink-0 rounded-xl border border-emerald-500/30 bg-emerald-950/30 px-3 py-2 flex items-center gap-2">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                    <span className="text-[11px] font-mono text-emerald-200">
+                      Nearest open issue to your location: <strong className="text-white">{nearestTicketId}</strong>
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar min-h-0">
-                  {complaints.map((c) => (
-                    <AlertDefectCard
-                      key={c._id || c.id || c.ticketId}
-                      complaint={c}
-                      onInspect={handleInspectComplaint}
-                      isSelected={selectedTicket?.ticketId === c.ticketId}
-                    />
-                  ))}
+                  {complaints.length === 0 ? (
+                    <div className="charcoal-glass-card rounded-xl border border-white/10 p-4 text-center space-y-2 mt-2">
+                      <AlertTriangle className="w-6 h-6 text-amber-400 mx-auto" />
+                      <p className="text-xs text-zinc-300 font-semibold">No grievances loaded</p>
+                      <p className="text-[11px] text-zinc-500 leading-relaxed">
+                        The municipal API is unreachable. Start the backend:
+                      </p>
+                      <pre className="text-left text-[10px] font-mono bg-black/60 border border-white/10 rounded-lg p-2 text-emerald-300 overflow-x-auto">
+node backend/server.js
+                      </pre>
+                    </div>
+                  ) : (
+                    complaints.map((c) => (
+                      <AlertDefectCard
+                        key={c._id || c.id || c.ticketId}
+                        complaint={c}
+                        onInspect={handleInspectComplaint}
+                        isSelected={selectedTicket?.ticketId === c.ticketId}
+                      />
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -348,7 +441,8 @@ export const InspectionWorkspacePage = () => {
                   complaints={complaints}
                   onSelectComplaint={handleInspectComplaint}
                   onOpenAiVision={handleOpenAiVisionDirect}
-                  selectedComplaintId={selectedTicket?.ticketId}
+                  selectedComplaintId={nearestTicketId || selectedTicket?.ticketId}
+                  userLocation={userLocation}
                   height="100%"
                 />
               </div>
@@ -356,7 +450,32 @@ export const InspectionWorkspacePage = () => {
           )}
 
           {/* TAB 2: AI VISION & DEFECT DETECTION (LIVE EMBEDDED REPOSITORY 2 AI AGENT) */}
-          {activeTab === 'cv-inspector' && (
+          {activeTab === 'cv-inspector' && agentStatus === 'offline' && (
+            <div className="flex-1 w-full min-h-[calc(100vh-140px)] flex items-center justify-center bg-[#080D12] p-8">
+              <div className="charcoal-glass rounded-3xl border border-white/15 shadow-2xl max-w-lg w-full p-8 space-y-4 text-center">
+                <div className="w-14 h-14 rounded-2xl bg-red-500/15 border border-red-500/40 flex items-center justify-center mx-auto">
+                  <AlertTriangle className="w-7 h-7 text-red-400" />
+                </div>
+                <h3 className="text-lg font-bold font-display text-white">AI Vision Server Offline</h3>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  The SAM&nbsp;2 / Grounding&nbsp;DINO defect-detection server is not reachable at
+                  <span className="font-mono text-zinc-200"> {AI_AGENT_BASE}</span>. Start it, then retry:
+                </p>
+                <pre className="text-left text-[11px] font-mono bg-black/60 border border-white/10 rounded-xl p-3 text-emerald-300 overflow-x-auto">
+python AI-agent/ai_server.py --port 8765
+                </pre>
+                <button
+                  type="button"
+                  onClick={probeAgent}
+                  className="white-gloss-btn px-5 py-2.5 rounded-xl font-bold text-xs inline-flex items-center gap-2 cursor-pointer"
+                >
+                  <span>Retry Connection</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'cv-inspector' && agentStatus !== 'offline' && (
             <div className="flex-1 w-full min-h-[calc(100vh-140px)] flex flex-col bg-[#080D12]">
               <iframe
                 id="ai-agent-iframe"
@@ -382,7 +501,7 @@ export const InspectionWorkspacePage = () => {
                     params.set('address', addr);
                   }
                   params.set('t', String(Date.now()));
-                  return `http://127.0.0.1:8765/?${params.toString()}`;
+                  return `${AI_AGENT_BASE}/?${params.toString()}`;
                 })()}
                 title="AI Infrastructure Inspection Agent"
                 className="w-full flex-1 min-h-[calc(100vh-140px)] border-0"

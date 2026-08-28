@@ -26,7 +26,10 @@ export const Header = ({ onOpenLogin }) => {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={logout}
+                onClick={() => {
+                  logout();
+                  navigate(ROUTES.HOME);
+                }}
                 className="obsidian-pill-glass inline-flex items-center gap-1 px-3.5 py-1.5 hover:bg-red-500/20 text-zinc-400 hover:text-red-300 text-xs font-semibold transition-colors cursor-pointer"
                 title="Logout from authorized session"
                 aria-label="Logout"
