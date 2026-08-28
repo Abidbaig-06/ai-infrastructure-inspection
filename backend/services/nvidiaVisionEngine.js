@@ -6,11 +6,11 @@
  * plus a short engineering narrative for the dossier.
  *
  * Env: NVIDIA_API_KEY = nvapi-...
- * Model override: NVIDIA_VISION_MODEL (default meta/llama-3.2-90b-vision-instruct)
+ * Model override: NVIDIA_VISION_MODEL (default meta/llama-3.2-11b-vision-instruct)
  */
 
 const NVIDIA_BASE = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-const NVIDIA_MODEL = process.env.NVIDIA_VISION_MODEL || 'meta/llama-3.2-90b-vision-instruct';
+const NVIDIA_MODEL = process.env.NVIDIA_VISION_MODEL || 'meta/llama-3.2-11b-vision-instruct';
 
 // Accept a single key (NVIDIA_API_KEY) or a comma-separated pool (NVIDIA_API_KEYS).
 // Keys are used round-robin, and a request rotates to the next key on 401/403/429/5xx.
@@ -286,7 +286,7 @@ const detectDefectsNvidia = async ({ imageUrl, title, category } = {}) => {
   const RETRYABLE = new Set([401, 403, 408, 429, 500, 502, 503, 504]);
   let raw;
   let lastErr;
-  const REQUEST_TIMEOUT_MS = Number(process.env.NVIDIA_TIMEOUT_MS) || 45000;
+  const REQUEST_TIMEOUT_MS = Number(process.env.NVIDIA_TIMEOUT_MS) || 9000;
   for (let attempt = 0; attempt < API_KEYS.length; attempt++) {
     const idx = nextKeyIndex();
     const key = API_KEYS[idx];
