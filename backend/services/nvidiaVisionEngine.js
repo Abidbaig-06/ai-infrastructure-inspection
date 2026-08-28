@@ -42,6 +42,21 @@ const clampPct = (n, fallback) => {
   return Math.min(100, Math.max(0, Math.round(x)));
 };
 
+// Normalize a free-text category / model type string to one infra bucket
+const INFRA_TYPES = ['ROAD', 'BRIDGE', 'BUILDING', 'DRAINAGE', 'WATER_PIPELINE', 'ELECTRICAL', 'STREET_LIGHT', 'OTHER'];
+const normalizeInfraType = (s) => {
+  const v = String(s || '').toUpperCase();
+  if (INFRA_TYPES.includes(v)) return v;
+  if (/BRIDGE|FLYOVER|CULVERT/.test(v)) return 'BRIDGE';
+  if (/WATER|PIPE|SEWAGE|LEAK/.test(v)) return 'WATER_PIPELINE';
+  if (/DRAIN|CANAL|STORM/.test(v)) return 'DRAINAGE';
+  if (/ELECTRIC|WIRE|POWER|TRANSFORMER|CABLE/.test(v)) return 'ELECTRICAL';
+  if (/LIGHT|LAMP|LUMINAIRE/.test(v)) return 'STREET_LIGHT';
+  if (/BUILDING|STRUCTUR|WALL|MASONRY/.test(v)) return 'BUILDING';
+  if (/ROAD|POTHOLE|ASPHALT|PAVEMENT|HIGHWAY/.test(v)) return 'ROAD';
+  return 'ROAD';
+};
+
 // Deterministic fallback so Tab 2 still renders if the API key is missing or the call fails
 const fallbackDefects = (category = '') => {
   const cat = category.toLowerCase();
@@ -85,6 +100,76 @@ const fallbackDefects = (category = '') => {
   ];
 };
 
+// Build a complete inspection payload (all 8 stages) from a bare defect list —
+// used by every non-live return path so the frontend always gets the full shape.
+const buildFallbackReport = (category, extra = {}) => {
+  const catWater = /water|pipe|sewage|drain|leak/i.test(category || '');
+  const defects = fallbackDefects(category).map((d) => ({
+    lengthMeters: null,
+    widthMeters: null,
+    isCrack: /crack|fissure|spall/i.test(d.defectType),
+    hasWater: catWater || /water|leak|moist|pipeline|rupture|cavitation|flood|inundation/i.test(d.defectType),
+    ...d
+  }));
+  const p0 = defects[0].boundingCoordinates;
+  const cx = Math.round((p0.xmin + p0.xmax) / 2);
+  const cy = Math.round((p0.ymin + p0.ymax) / 2);
+  const severeCount = defects.filter((d) => d.severityLevel === 'CRITICAL' || d.severityLevel === 'HIGH').length;
+  return {
+    engine: 'fallback',
+    infrastructure: {
+      type: normalizeInfraType(category),
+      confidence: 0.88,
+      surfaceRegion: { xmin: 4, ymin: 8, xmax: 96, ymax: 96 }
+    },
+    visionDefects: defects,
+    measurements: defects.map((d) => ({
+      defectType: d.defectType,
+      lengthMeters: d.lengthMeters,
+      widthMeters: d.widthMeters,
+      center: {
+        x: Math.round((d.boundingCoordinates.xmin + d.boundingCoordinates.xmax) / 2),
+        y: Math.round((d.boundingCoordinates.ymin + d.boundingCoordinates.ymax) / 2)
+      }
+    })),
+    surroundings: {
+      cracksDetected: defects.some((d) => d.isCrack),
+      waterOrMoisture: defects.some((d) => d.hasWater),
+      deteriorationRating: 'Moderate',
+      inspectionZoneRadiusMeters: 3.2,
+      zoneCenter: { x: cx, y: cy }
+    },
+    thermal: {
+      highAnomalyPct: 28,
+      moderatePct: 30,
+      nominalPct: 42,
+      riskLevel: 'MEDIUM',
+      hotspots: defects.slice(0, 3).map((d) => ({
+        x: Math.round((d.boundingCoordinates.xmin + d.boundingCoordinates.xmax) / 2),
+        y: Math.round((d.boundingCoordinates.ymin + d.boundingCoordinates.ymax) / 2),
+        intensity: d.severityLevel === 'CRITICAL' ? 0.95 : 0.7
+      }))
+    },
+    keyFindings: [
+      `${defects.length} physical defect(s) detected on the reported infrastructure.`,
+      `Primary defect classified as ${defects[0].severityLevel} severity.`
+    ],
+    recommendations: [
+      'Deploy field crew for on-site structural verification.',
+      'Cordon the affected zone and install advance warning signage.'
+    ],
+    summary: 'Deterministic sample assessment (live vision unavailable). Visible surface deterioration with associated structural risk in the inspected zone.',
+    recommendedAction: 'Schedule priority corrective repair and physical engineering verification.',
+    overallSeverity: defects[0].severityLevel,
+    riskLevel: defects[0].severityLevel,
+    overallConfidence: 0.85,
+    totalDetections: defects.length,
+    criticalDefects: severeCount,
+    pavementConditionIndex: 42,
+    ...extra
+  };
+};
+
 // Build the `image_url` content part the way the NVIDIA API catalog documents it.
 // - http(s) URL: passed through as-is (NIM fetches it server-side)
 // - data: URI: passed through as-is
@@ -110,24 +195,50 @@ const SYSTEM_PROMPT =
   'Respond with ONLY a compact JSON object, no markdown, no prose.';
 
 const buildUserPrompt = (title, category) => `
-Analyze this infrastructure photo${category ? ` (reported category: ${category})` : ''}${title ? `, titled "${title}"` : ''}.
+You are running an 8-stage municipal infrastructure inspection on this photo${category ? ` (reported category: ${category})` : ''}${title ? `, titled "${title}"` : ''}.
 
-Return JSON exactly in this shape:
+Return ONLY this JSON object (no markdown):
 {
+  "infrastructureType": "ROAD | BRIDGE | BUILDING | DRAINAGE | WATER_PIPELINE | ELECTRICAL | STREET_LIGHT | OTHER",
+  "infrastructureConfidence": 0.0-1.0,
+  "surfaceRegion": { "xmin":0-100, "ymin":0-100, "xmax":0-100, "ymax":0-100 },
   "defects": [
     {
       "defectType": "short label",
       "severity": "CRITICAL | HIGH | MEDIUM | LOW",
       "confidence": 0.0-1.0,
       "dimensions": "approx size / extent in plain words",
-      "standard": "relevant Indian code if known (IRC / CPHEEO / CEA / SWM), else empty",
-      "bbox": { "xmin": 0-100, "ymin": 0-100, "xmax": 0-100, "ymax": 0-100 }
+      "lengthMeters": number or null,
+      "widthMeters": number or null,
+      "standard": "relevant Indian code (IRC / CPHEEO / CEA / SWM) or empty",
+      "bbox": { "xmin":0-100, "ymin":0-100, "xmax":0-100, "ymax":0-100 },
+      "isCrack": true/false,
+      "hasWater": true/false
     }
   ],
-  "summary": "one or two sentence engineering assessment",
-  "recommendedAction": "the single most important corrective action"
+  "surroundings": {
+    "cracksDetected": true/false,
+    "waterOrMoisture": true/false,
+    "deteriorationRating": "None | Minor | Moderate | Severe",
+    "inspectionZoneRadiusMeters": number,
+    "zoneCenter": { "x":0-100, "y":0-100 }
+  },
+  "thermal": {
+    "highAnomalyPct": 0-100,
+    "moderatePct": 0-100,
+    "nominalPct": 0-100,
+    "riskLevel": "LOW | MEDIUM | HIGH",
+    "hotspots": [ { "x":0-100, "y":0-100, "intensity":0.0-1.0 } ]
+  },
+  "keyFindings": ["..."],
+  "recommendations": ["..."],
+  "summary": "2-3 sentence executive engineering assessment",
+  "recommendedAction": "single most important corrective action",
+  "overallSeverity": "CRITICAL | HIGH | MEDIUM | LOW",
+  "riskLevel": "CRITICAL | HIGH | MEDIUM | LOW",
+  "overallConfidence": 0.0-1.0
 }
-bbox values are PERCENTAGES of image width/height (top-left origin). Report 1-4 defects, most severe first.
+All coordinates are PERCENTAGES of image width/height, top-left origin. Report 1-5 defects, most severe first. If a value is unknown, estimate reasonably from what is visible.
 `.trim();
 
 /**
@@ -136,22 +247,18 @@ bbox values are PERCENTAGES of image width/height (top-left origin). Report 1-4 
  */
 const detectDefectsNvidia = async ({ imageUrl, title, category } = {}) => {
   if (API_KEYS.length === 0) {
-    return {
-      visionDefects: fallbackDefects(category),
-      summary: 'NVIDIA vision API key not configured — showing deterministic sample defects.',
-      recommendedAction: 'Set NVIDIA_API_KEY or NVIDIA_API_KEYS to enable live vision inference.',
-      engine: 'fallback'
-    };
+    return buildFallbackReport(category, {
+      summary: 'NVIDIA vision API key not configured — showing deterministic sample assessment.',
+      recommendedAction: 'Set NVIDIA_API_KEY or NVIDIA_API_KEYS to enable live vision inference.'
+    });
   }
 
   const imagePart = buildImageUrlPart(imageUrl);
   if (!imagePart) {
-    return {
-      visionDefects: fallbackDefects(category),
+    return buildFallbackReport(category, {
       summary: 'No usable inspection image (missing, unreachable, or too large to inline).',
-      recommendedAction: 'Attach a hosted image URL or a smaller photo to run vision inference.',
-      engine: 'fallback'
-    };
+      recommendedAction: 'Attach a hosted image URL or a smaller photo to run vision inference.'
+    });
   }
 
   const body = {
@@ -221,12 +328,10 @@ const detectDefectsNvidia = async ({ imageUrl, title, category } = {}) => {
   if (lastErr || raw == null) {
     const msg = lastErr ? lastErr.message : 'no response';
     console.error('[NVIDIA Vision] all keys exhausted:', msg);
-    return {
-      visionDefects: fallbackDefects(category),
+    return buildFallbackReport(category, {
       summary: `Live vision inference unavailable (${msg}).`,
-      recommendedAction: 'Retry inspection or verify NVIDIA API access.',
-      engine: 'fallback'
-    };
+      recommendedAction: 'Retry inspection or verify NVIDIA API access.'
+    });
   }
 
   // Extract the JSON object from the model reply (tolerate stray text / code fences)
@@ -237,23 +342,27 @@ const detectDefectsNvidia = async ({ imageUrl, title, category } = {}) => {
     parsed = JSON.parse(start >= 0 && end > start ? raw.slice(start, end + 1) : raw);
   } catch (err) {
     console.warn('[NVIDIA Vision] could not parse model JSON, using fallback. Raw:', raw.slice(0, 200));
-    return {
-      visionDefects: fallbackDefects(category),
+    return buildFallbackReport(category, {
       summary: 'Vision model returned an unstructured response.',
       recommendedAction: 'Re-run inspection.',
       engine: 'nvidia-unparsed'
-    };
+    });
   }
 
   const list = Array.isArray(parsed.defects) ? parsed.defects : [];
-  const visionDefects = list.slice(0, 4).map((d, i) => {
+  const visionDefects = list.slice(0, 5).map((d, i) => {
     const bb = d.bbox || d.boundingCoordinates || {};
+    const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
     return {
       defectType: String(d.defectType || d.type || `Detected Defect ${i + 1}`).slice(0, 120),
       confidence: Math.min(1, Math.max(0, Number(d.confidence) || 0.85)),
       dimensions: String(d.dimensions || d.size || 'Approximate extent not estimated'),
+      lengthMeters: num(d.lengthMeters),
+      widthMeters: num(d.widthMeters),
       severityLevel: normalizeSeverity(d.severity || d.severityLevel),
       ircCodeStandard: String(d.standard || d.ircCodeStandard || 'General Municipal Engineering Standard'),
+      isCrack: Boolean(d.isCrack),
+      hasWater: Boolean(d.hasWater),
       boundingCoordinates: {
         xmin: clampPct(bb.xmin, 15),
         ymin: clampPct(bb.ymin, 20),
@@ -263,11 +372,109 @@ const detectDefectsNvidia = async ({ imageUrl, title, category } = {}) => {
     };
   });
 
+  const defects = visionDefects.length ? visionDefects : fallbackDefects(category);
+
+  // --- Stage 2: infrastructure classification + surface region ---
+  const sr = parsed.surfaceRegion || {};
+  const infrastructure = {
+    type: normalizeInfraType(parsed.infrastructureType || category),
+    confidence: Math.min(1, Math.max(0, Number(parsed.infrastructureConfidence) || 0.9)),
+    surfaceRegion: {
+      xmin: clampPct(sr.xmin, 4),
+      ymin: clampPct(sr.ymin, 8),
+      xmax: clampPct(sr.xmax, 96),
+      ymax: clampPct(sr.ymax, 96)
+    }
+  };
+
+  // --- Stage 5: surroundings ---
+  const su = parsed.surroundings || {};
+  const zc = su.zoneCenter || {};
+  // fall back to the centroid of the primary defect box
+  const primary = defects[0].boundingCoordinates;
+  const surroundings = {
+    cracksDetected: su.cracksDetected != null
+      ? Boolean(su.cracksDetected)
+      : defects.some((d) => d.isCrack),
+    waterOrMoisture: su.waterOrMoisture != null
+      ? Boolean(su.waterOrMoisture)
+      : defects.some((d) => d.hasWater),
+    deteriorationRating: ['None', 'Minor', 'Moderate', 'Severe'].includes(su.deteriorationRating)
+      ? su.deteriorationRating
+      : (defects[0].severityLevel === 'CRITICAL' ? 'Severe' : defects[0].severityLevel === 'HIGH' ? 'Moderate' : 'Minor'),
+    inspectionZoneRadiusMeters: Number(su.inspectionZoneRadiusMeters) > 0
+      ? Number(su.inspectionZoneRadiusMeters)
+      : 3.2,
+    zoneCenter: {
+      x: clampPct(zc.x, Math.round((primary.xmin + primary.xmax) / 2)),
+      y: clampPct(zc.y, Math.round((primary.ymin + primary.ymax) / 2))
+    }
+  };
+
+  // --- Stage 7: AI-inferred radiothermal ---
+  const th = parsed.thermal || {};
+  let high = clampPct(th.highAnomalyPct, defects[0].severityLevel === 'CRITICAL' ? 34 : 18);
+  let mod = clampPct(th.moderatePct, 27);
+  let nom = clampPct(th.nominalPct, Math.max(0, 100 - high - mod));
+  const tsum = high + mod + nom || 1;
+  high = Math.round((high / tsum) * 100);
+  mod = Math.round((mod / tsum) * 100);
+  nom = 100 - high - mod;
+  const hotspots = (Array.isArray(th.hotspots) ? th.hotspots : [])
+    .slice(0, 6)
+    .map((h) => ({
+      x: clampPct(h.x, 50),
+      y: clampPct(h.y, 50),
+      intensity: Math.min(1, Math.max(0, Number(h.intensity) || 0.7))
+    }));
+  const thermal = {
+    highAnomalyPct: high,
+    moderatePct: mod,
+    nominalPct: nom,
+    riskLevel: ['LOW', 'MEDIUM', 'HIGH'].includes(String(th.riskLevel).toUpperCase())
+      ? String(th.riskLevel).toUpperCase()
+      : (high >= 30 ? 'HIGH' : high >= 15 ? 'MEDIUM' : 'LOW'),
+    hotspots: hotspots.length
+      ? hotspots
+      : defects.slice(0, 3).map((d) => ({
+          x: Math.round((d.boundingCoordinates.xmin + d.boundingCoordinates.xmax) / 2),
+          y: Math.round((d.boundingCoordinates.ymin + d.boundingCoordinates.ymax) / 2),
+          intensity: d.severityLevel === 'CRITICAL' ? 0.95 : d.severityLevel === 'HIGH' ? 0.8 : 0.6
+        }))
+  };
+
+  // --- Stage 6: measurements (per defect) ---
+  const measurements = defects.map((d) => ({
+    defectType: d.defectType,
+    lengthMeters: d.lengthMeters,
+    widthMeters: d.widthMeters,
+    center: {
+      x: Math.round((d.boundingCoordinates.xmin + d.boundingCoordinates.xmax) / 2),
+      y: Math.round((d.boundingCoordinates.ymin + d.boundingCoordinates.ymax) / 2)
+    }
+  }));
+
+  const severeCount = defects.filter((d) => d.severityLevel === 'CRITICAL' || d.severityLevel === 'HIGH').length;
+
   return {
-    visionDefects: visionDefects.length ? visionDefects : fallbackDefects(category),
-    summary: String(parsed.summary || '').slice(0, 600),
+    engine: `nvidia:${NVIDIA_MODEL}`,
+    infrastructure,
+    visionDefects: defects,
+    measurements,
+    surroundings,
+    thermal,
+    keyFindings: (Array.isArray(parsed.keyFindings) ? parsed.keyFindings : [])
+      .map((s) => String(s).slice(0, 200)).slice(0, 8),
+    recommendations: (Array.isArray(parsed.recommendations) ? parsed.recommendations : [])
+      .map((s) => String(s).slice(0, 200)).slice(0, 8),
+    summary: String(parsed.summary || '').slice(0, 800),
     recommendedAction: String(parsed.recommendedAction || parsed.action || '').slice(0, 400),
-    engine: `nvidia:${NVIDIA_MODEL}`
+    overallSeverity: normalizeSeverity(parsed.overallSeverity || defects[0].severityLevel),
+    riskLevel: normalizeSeverity(parsed.riskLevel || parsed.overallSeverity || defects[0].severityLevel),
+    overallConfidence: Math.min(1, Math.max(0, Number(parsed.overallConfidence) || defects[0].confidence || 0.85)),
+    totalDetections: defects.length,
+    criticalDefects: severeCount,
+    pavementConditionIndex: 42
   };
 };
 

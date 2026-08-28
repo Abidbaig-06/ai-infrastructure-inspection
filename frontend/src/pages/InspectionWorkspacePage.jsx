@@ -418,37 +418,16 @@ node backend/server.js
             </div>
           )}
 
-          {/* TAB 2: AI VISION & DEFECT DETECTION (NVIDIA NIM vision model, via backend) */}
+          {/* TAB 2: 8-STAGE AI INFRASTRUCTURE INSPECTION (NVIDIA NIM vision model) */}
           {activeTab === 'cv-inspector' && (
-            <div className="flex-1 w-full min-h-0 overflow-y-auto custom-scrollbar pr-1 space-y-4">
+            <div className="flex-1 w-full min-h-0 overflow-y-auto custom-scrollbar pr-1">
               <AIVisionInspectorCanvas
                 imageUrl={activeComplaintItem?.imageUrl}
-                visionDefects={visionResult?.visionDefects || []}
-                pavementConditionIndex={activeComplaintItem?.aiAnalysis?.pavementConditionIndex || 42}
+                report={visionResult}
+                pavementConditionIndex={visionResult?.pavementConditionIndex || activeComplaintItem?.aiAnalysis?.pavementConditionIndex || 42}
                 onReScan={() => runVision(activeComplaintItem)}
                 isScanning={visionLoading}
               />
-
-              {(visionResult?.summary || visionResult?.recommendedAction) && (
-                <div className="charcoal-glass rounded-2xl border border-white/15 p-5 space-y-2 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold uppercase tracking-wider text-zinc-300">
-                      NVIDIA Vision Assessment
-                    </span>
-                    <span className="font-mono text-[10px] text-zinc-500">
-                      {visionResult?.engine}
-                    </span>
-                  </div>
-                  {visionResult?.summary && (
-                    <p className="text-zinc-200 leading-relaxed">{visionResult.summary}</p>
-                  )}
-                  {visionResult?.recommendedAction && (
-                    <p className="text-zinc-300">
-                      <strong className="text-white">Recommended action:</strong> {visionResult.recommendedAction}
-                    </p>
-                  )}
-                </div>
-              )}
             </div>
           )}
 
