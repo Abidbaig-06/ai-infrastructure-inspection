@@ -1,5 +1,19 @@
-import React, { useState } from 'react';
-import { Sparkles, Scan, Eye, Layers, ShieldAlert, CheckCircle, Info, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Sparkles, Scan, Eye, Layers, ShieldAlert, CheckCircle, Info, RefreshCw, Loader2 } from 'lucide-react';
+
+// Legacy 8-stage inspection pipeline labels (kept from the SAM 2 / Grounding DINO agent).
+// These are shown as an animated progress sequence while the single NVIDIA vision
+// call is in flight — purely visual, no extra backend requests.
+const PIPELINE_STAGES = [
+  'Image Ingestion & Optical Normalization',
+  'Scene & Infrastructure Domain Classification',
+  'Zero-Shot Defect Detection (Vision-Language Model)',
+  'High-Precision Region Localization',
+  'Surroundings & Environmental Hazard Analysis',
+  'Calibrated Physical Metric Estimation',
+  'Radiothermal & Moisture Anomaly Modeling',
+  'Master Synthesis & Executive Action Report'
+];
 
 export const AIVisionInspectorCanvas = ({
   imageUrl,
@@ -11,6 +25,32 @@ export const AIVisionInspectorCanvas = ({
   const [showBoxes, setShowBoxes] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [selectedDefectIndex, setSelectedDefectIndex] = useState(0);
+
+  // Drive the cosmetic pipeline animation from `isScanning`
+  const [stageIdx, setStageIdx] = useState(PIPELINE_STAGES.length);
+  const timersRef = useRef([]);
+
+  useEffect(() => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+
+    if (!isScanning) {
+      // finish any remaining stages quickly, then clear
+      setStageIdx(PIPELINE_STAGES.length);
+      return;
+    }
+
+    setStageIdx(0);
+    // advance through stages; hold on the last one until isScanning flips off
+    for (let i = 1; i < PIPELINE_STAGES.length; i++) {
+      timersRef.current.push(
+        setTimeout(() => setStageIdx(i), i * 520 + Math.random() * 160)
+      );
+    }
+    return () => timersRef.current.forEach(clearTimeout);
+  }, [isScanning]);
+
+  const pipelineActive = isScanning || stageIdx < PIPELINE_STAGES.length - 1;
 
   const defects = visionDefects.length > 0 ? visionDefects : [
     {
@@ -93,13 +133,48 @@ export const AIVisionInspectorCanvas = ({
         </div>
       </div>
 
+      {/* 8-Stage Inspection Pipeline (animated while scanning) */}
+      {isScanning && (
+        <div className="rounded-2xl charcoal-glass-card border border-white/15 p-4 space-y-2">
+          <div className="flex items-center gap-2 text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-300">
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+            <span>Running Inspection Pipeline — Stage {Math.min(stageIdx + 1, PIPELINE_STAGES.length)} / {PIPELINE_STAGES.length}</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+            {PIPELINE_STAGES.map((label, i) => {
+              const done = i < stageIdx;
+              const active = i === stageIdx;
+              return (
+                <div key={i} className="flex items-center gap-2 text-[11px] font-mono">
+                  {done ? (
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                  ) : active ? (
+                    <Loader2 className="w-3.5 h-3.5 text-white animate-spin flex-shrink-0" />
+                  ) : (
+                    <span className="w-3.5 h-3.5 rounded-full border border-white/20 flex-shrink-0" />
+                  )}
+                  <span className={done ? 'text-zinc-400 line-through decoration-white/20' : active ? 'text-white' : 'text-zinc-600'}>
+                    {i + 1}. {label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Main Image Canvas with Bounding Box Overlays */}
       <div className="relative rounded-2xl overflow-hidden bg-black border border-white/20 flex items-center justify-center min-h-[300px] max-h-[420px] group shadow-2xl">
         <img
           src={imageUrl || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800&auto=format&fit=crop&q=80'}
           alt="Infrastructure Inspection Evidence"
-          className="w-full h-full object-cover object-center max-h-[420px] opacity-95"
+          className={`w-full h-full object-cover object-center max-h-[420px] transition-opacity duration-300 ${isScanning ? 'opacity-40' : 'opacity-95'}`}
         />
+
+        {/* Scanning sweep line */}
+        {isScanning && (
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-white to-transparent shadow-[0_0_16px_#fff] animate-[scanSweep_1.6s_ease-in-out_infinite]" />
+        )}
 
         {/* Heatmap Overlay Simulation */}
         {showHeatmap && (
@@ -107,7 +182,7 @@ export const AIVisionInspectorCanvas = ({
         )}
 
         {/* Interactive Bounding Boxes */}
-        {showBoxes && defects.map((defect, idx) => {
+        {showBoxes && !isScanning && defects.map((defect, idx) => {
           const coords = defect.boundingCoordinates || { xmin: 20, ymin: 20, xmax: 80, ymax: 80 };
           const isSelected = selectedDefectIndex === idx;
 

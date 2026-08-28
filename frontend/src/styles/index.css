@@ -317,6 +317,12 @@
   z-index: 5;
 }
 
+@keyframes scanSweep {
+  0% { transform: translateY(0); opacity: 0.9; }
+  50% { transform: translateY(420px); opacity: 0.5; }
+  100% { transform: translateY(0); opacity: 0.9; }
+}
+
 @keyframes pulse-ring {
   0% {
     transform: scale(0.5);
