@@ -1,4 +1,6 @@
-const API_BASE = '/api';
+// In dev, Vite proxies '/api' to the backend. For split deploys (frontend on
+// Vercel, backend on Render) set VITE_API_BASE to the backend origin + '/api'.
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 export const fetchComplaints = async (params = {}) => {
   try {
@@ -159,6 +161,22 @@ export const fetchDemoOfficers = async () => {
     return await res.json();
   } catch (err) {
     console.error('API Error fetchDemoOfficers:', err);
+    throw err;
+  }
+};
+
+// Live computer-vision defect detection (NVIDIA NIM vision model, via backend)
+export const runVisionInspection = async (payload) => {
+  try {
+    const res = await fetch(`${API_BASE}/ai-agent/vision`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Vision inspection failed');
+    return await res.json();
+  } catch (err) {
+    console.error('API Error runVisionInspection:', err);
     throw err;
   }
 };

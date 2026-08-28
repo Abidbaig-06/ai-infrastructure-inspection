@@ -8,6 +8,19 @@ const {
 const Complaint = require('../models/Complaint');
 const { isUsingMongo, getMemoryDb } = require('../../database/connection');
 const { seedComplaints } = require('../seed/seedData');
+const { detectDefectsNvidia } = require('../services/nvidiaVisionEngine');
+
+// @desc Live computer-vision defect detection via NVIDIA NIM vision model
+exports.visionInspect = async (req, res) => {
+  try {
+    const { imageUrl, title, description, category } = req.body || {};
+    const result = await detectDefectsNvidia({ imageUrl, title, description, category });
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    console.error('Error during NVIDIA vision inspection:', err);
+    res.status(500).json({ success: false, message: 'Vision inspection failed' });
+  }
+};
 
 // @desc Run Multimodal Inspection on an Image + Report
 exports.inspectAsset = async (req, res) => {

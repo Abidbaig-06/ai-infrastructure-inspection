@@ -1,3 +1,4 @@
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -6,9 +7,22 @@ const { connectDB } = require('../database/connection');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enable CORS for frontend Vite development
+// CORS: localhost for dev + any origins listed in CORS_ORIGINS (comma-separated).
+// Also allow any *.vercel.app preview/production URL by default.
+const staticOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  ...(process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
+];
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000'],
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true); // curl / server-to-server
+    if (staticOrigins.includes(origin) || /\.vercel\.app$/.test(new URL(origin).hostname)) {
+      return cb(null, true);
+    }
+    return cb(new Error(`CORS blocked: ${origin}`));
+  },
   credentials: true,
 }));
 

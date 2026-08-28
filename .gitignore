@@ -46,3 +46,10 @@ __pycache__/
 *.pth
 gdino_checkpoints/*.pth
 sam2.1_hiera_tiny.pt
+
+# Backend secrets & scratch
+backend/.env
+backend/test_nvidia.js
+
+# Heavy Python vision repo - not deployed (replaced by NVIDIA NIM API)
+AI-agent/

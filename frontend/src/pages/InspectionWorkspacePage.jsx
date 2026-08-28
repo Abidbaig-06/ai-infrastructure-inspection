@@ -17,7 +17,7 @@ import { InfraspectionAIAssistantBot } from '../components/agent/InfraspectionAI
 import { useGrievance } from '../context/GrievanceContext';
 import { useAuth } from '../context/AuthContext';
 import { sampleHazards } from '../services/sampleHazards';
-import { inspectInfrastructureAI } from '../services/api';
+import { inspectInfrastructureAI, runVisionInspection } from '../services/api';
 import { ROUTES } from '../config/routes';
 import {
   Shield,
@@ -105,23 +105,28 @@ export const InspectionWorkspacePage = () => {
     }
   }, [userLocation, complaints]);
 
-  // Live AI Vision agent (Python SAM 2 / Grounding DINO server) reachability
-  const AI_AGENT_BASE = import.meta.env.VITE_AI_AGENT_URL || 'http://127.0.0.1:8765';
-  const [agentStatus, setAgentStatus] = useState('checking'); // 'checking' | 'online' | 'offline'
+  // Live computer-vision defect detection via NVIDIA NIM (backend proxied)
+  const [visionResult, setVisionResult] = useState(null);
+  const [visionLoading, setVisionLoading] = useState(false);
+  const visionKeyRef = React.useRef(null);
 
-  const probeAgent = React.useCallback(() => {
-    setAgentStatus('checking');
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 3000);
-    fetch(`${AI_AGENT_BASE}/`, { mode: 'no-cors', signal: controller.signal })
-      .then(() => setAgentStatus('online'))
-      .catch(() => setAgentStatus('offline'))
-      .finally(() => clearTimeout(timer));
-  }, [AI_AGENT_BASE]);
-
-  React.useEffect(() => {
-    if (activeTab === 'cv-inspector') probeAgent();
-  }, [activeTab, probeAgent]);
+  const runVision = React.useCallback(async (item) => {
+    if (!item?.imageUrl) return;
+    setVisionLoading(true);
+    try {
+      const res = await runVisionInspection({
+        imageUrl: item.imageUrl,
+        title: item.title,
+        description: item.description,
+        category: item.category
+      });
+      if (res.success && res.data) setVisionResult(res.data);
+    } catch (err) {
+      console.error('Vision inspection failed:', err);
+    } finally {
+      setVisionLoading(false);
+    }
+  }, []);
 
   const getActiveComplaintForDossier = () => {
     if (selectedTicket) {
@@ -195,28 +200,16 @@ export const InspectionWorkspacePage = () => {
     };
   }, [activeTab]);
 
+  // Run (or re-run) NVIDIA vision detection whenever the CV tab is opened for a
+  // new complaint image.
   React.useEffect(() => {
-    const handleWindowMsg = (e) => {
-      if (e.data && e.data.type === 'IFRAME_READY') {
-        const iframe = document.getElementById('ai-agent-iframe');
-        if (iframe && iframe.contentWindow && activeComplaintItem?.imageUrl) {
-          iframe.contentWindow.postMessage(
-            {
-              type: 'INSPECT_IMAGE',
-              imageUrl: activeComplaintItem.imageUrl,
-              image: activeComplaintItem.imageUrl,
-              name: activeComplaintItem.title || 'complaint_image.jpg',
-              title: activeComplaintItem.title || '',
-              category: activeComplaintItem.category?.toLowerCase() || 'road'
-            },
-            '*'
-          );
-        }
-      }
-    };
-    window.addEventListener('message', handleWindowMsg);
-    return () => window.removeEventListener('message', handleWindowMsg);
-  }, [activeComplaintItem]);
+    if (activeTab !== 'cv-inspector') return;
+    const key = activeComplaintItem?.imageUrl || null;
+    if (!key || visionKeyRef.current === key) return;
+    visionKeyRef.current = key;
+    setVisionResult(null);
+    runVision(activeComplaintItem);
+  }, [activeTab, activeComplaintItem, runVision]);
 
   const handleOpenAiVisionDirect = (c) => {
     if (c) {
@@ -315,34 +308,10 @@ export const InspectionWorkspacePage = () => {
                 <span>🛰️ Aerial Satellite (Red Dots)</span>
               </button>
 
-              {/* Position 2: AI Vision & Defect Detection (SAM 2.1) */}
+              {/* Position 2: AI Vision & Defect Detection (NVIDIA NIM) */}
               <button
                 type="button"
-                onClick={() => {
-                  setActiveTab('cv-inspector');
-                  setTimeout(() => {
-                    const iframe = document.getElementById('ai-agent-iframe');
-                    if (iframe && iframe.contentWindow) {
-                      try {
-                        iframe.contentWindow.postMessage({ type: 'RESET_VIEWPORT_PAGE1' }, '*');
-                        iframe.contentWindow.scrollTo(0, 0);
-                        if (activeComplaintItem?.imageUrl) {
-                          iframe.contentWindow.postMessage(
-                            {
-                              type: 'INSPECT_IMAGE',
-                              imageUrl: activeComplaintItem.imageUrl,
-                              image: activeComplaintItem.imageUrl,
-                              name: activeComplaintItem.title || 'complaint_image.jpg',
-                              title: activeComplaintItem.title || '',
-                              category: activeComplaintItem.category?.toLowerCase() || 'road'
-                            },
-                            '*'
-                          );
-                        }
-                      } catch (_) { }
-                    }
-                  }, 100);
-                }}
+                onClick={() => setActiveTab('cv-inspector')}
                 className={`px-4 py-2.5 rounded-xl font-black transition-all flex items-center gap-2 text-xs cursor-pointer ${activeTab === 'cv-inspector'
                     ? 'white-gloss-btn shadow-lg'
                     : 'text-zinc-400 hover:text-white hover:bg-white/10'
@@ -449,93 +418,37 @@ node backend/server.js
             </div>
           )}
 
-          {/* TAB 2: AI VISION & DEFECT DETECTION (LIVE EMBEDDED REPOSITORY 2 AI AGENT) */}
-          {activeTab === 'cv-inspector' && agentStatus === 'offline' && (
-            <div className="flex-1 w-full min-h-[calc(100vh-140px)] flex items-center justify-center bg-[#080D12] p-8">
-              <div className="charcoal-glass rounded-3xl border border-white/15 shadow-2xl max-w-lg w-full p-8 space-y-4 text-center">
-                <div className="w-14 h-14 rounded-2xl bg-red-500/15 border border-red-500/40 flex items-center justify-center mx-auto">
-                  <AlertTriangle className="w-7 h-7 text-red-400" />
-                </div>
-                <h3 className="text-lg font-bold font-display text-white">AI Vision Server Offline</h3>
-                <p className="text-xs text-zinc-400 leading-relaxed">
-                  The SAM&nbsp;2 / Grounding&nbsp;DINO defect-detection server is not reachable at
-                  <span className="font-mono text-zinc-200"> {AI_AGENT_BASE}</span>. Start it, then retry:
-                </p>
-                <pre className="text-left text-[11px] font-mono bg-black/60 border border-white/10 rounded-xl p-3 text-emerald-300 overflow-x-auto">
-python AI-agent/ai_server.py --port 8765
-                </pre>
-                <button
-                  type="button"
-                  onClick={probeAgent}
-                  className="white-gloss-btn px-5 py-2.5 rounded-xl font-bold text-xs inline-flex items-center gap-2 cursor-pointer"
-                >
-                  <span>Retry Connection</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'cv-inspector' && agentStatus !== 'offline' && (
-            <div className="flex-1 w-full min-h-[calc(100vh-140px)] flex flex-col bg-[#080D12]">
-              <iframe
-                id="ai-agent-iframe"
-                key={activeComplaintItem?.ticketId || activeComplaintItem?._id || activeComplaintItem?.id || 'live'}
-                src={(() => {
-                  const params = new URLSearchParams();
-                  const ticket = activeComplaintItem?.ticketId || activeComplaintItem?._id || activeComplaintItem?.id || '';
-                  if (ticket) {
-                    params.set('ticket', ticket);
-                    params.set('ticketId', ticket);
-                    params.set('id', ticket);
-                  }
-                  params.set('category', activeComplaintItem?.category?.toLowerCase() || 'road');
-                  params.set('title', activeComplaintItem?.title || 'complaint_image.jpg');
-                  const lat = activeComplaintItem?.location?.latitude;
-                  const lon = activeComplaintItem?.location?.longitude;
-                  const addr = activeComplaintItem?.location?.address;
-                  if (lat && lon) {
-                    params.set('lat', String(lat));
-                    params.set('lon', String(lon));
-                  }
-                  if (addr) {
-                    params.set('address', addr);
-                  }
-                  params.set('t', String(Date.now()));
-                  return `${AI_AGENT_BASE}/?${params.toString()}`;
-                })()}
-                title="AI Infrastructure Inspection Agent"
-                className="w-full flex-1 min-h-[calc(100vh-140px)] border-0"
-                allow="camera; microphone; clipboard-write; geolocation"
-                onLoad={(e) => {
-                  try {
-                    const cw = e.target.contentWindow;
-                    if (cw) {
-                      cw.scrollTo(0, 0);
-                      if (activeComplaintItem?.imageUrl) {
-                        const sendPayload = () => {
-                          try {
-                            cw.postMessage(
-                              {
-                                type: 'INSPECT_IMAGE',
-                                imageUrl: activeComplaintItem.imageUrl,
-                                image: activeComplaintItem.imageUrl,
-                                name: activeComplaintItem.title || 'complaint_image.jpg',
-                                title: activeComplaintItem.title || '',
-                                category: activeComplaintItem.category?.toLowerCase() || 'road',
-                                location: activeComplaintItem.location || {}
-                              },
-                              '*'
-                            );
-                          } catch (_) {}
-                        };
-                        sendPayload();
-                        setTimeout(sendPayload, 300);
-                        setTimeout(sendPayload, 800);
-                      }
-                    }
-                  } catch (_) { }
-                }}
+          {/* TAB 2: AI VISION & DEFECT DETECTION (NVIDIA NIM vision model, via backend) */}
+          {activeTab === 'cv-inspector' && (
+            <div className="flex-1 w-full min-h-0 overflow-y-auto custom-scrollbar pr-1 space-y-4">
+              <AIVisionInspectorCanvas
+                imageUrl={activeComplaintItem?.imageUrl}
+                visionDefects={visionResult?.visionDefects || []}
+                pavementConditionIndex={activeComplaintItem?.aiAnalysis?.pavementConditionIndex || 42}
+                onReScan={() => runVision(activeComplaintItem)}
+                isScanning={visionLoading}
               />
+
+              {(visionResult?.summary || visionResult?.recommendedAction) && (
+                <div className="charcoal-glass rounded-2xl border border-white/15 p-5 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-bold uppercase tracking-wider text-zinc-300">
+                      NVIDIA Vision Assessment
+                    </span>
+                    <span className="font-mono text-[10px] text-zinc-500">
+                      {visionResult?.engine}
+                    </span>
+                  </div>
+                  {visionResult?.summary && (
+                    <p className="text-zinc-200 leading-relaxed">{visionResult.summary}</p>
+                  )}
+                  {visionResult?.recommendedAction && (
+                    <p className="text-zinc-300">
+                      <strong className="text-white">Recommended action:</strong> {visionResult.recommendedAction}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

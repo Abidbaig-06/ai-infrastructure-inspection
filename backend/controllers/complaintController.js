@@ -3,11 +3,11 @@ const { isUsingMongo, getMemoryDb, persistMemoryDb } = require('../../database/c
 const { analyzeComplaintAI } = require('../services/aiAnalysisEngine');
 const { seedComplaints } = require('../seed/seedData');
 
-// Initialize memory db complaints if empty
+// Initialize memory db complaints if empty (seed with demo grievances)
 const initMemoryComplaints = () => {
   const db = getMemoryDb();
-  if (!db.complaints) {
-    db.complaints = [];
+  if (!db.complaints || db.complaints.length === 0) {
+    db.complaints = JSON.parse(JSON.stringify(seedComplaints));
     persistMemoryDb();
   }
 };
