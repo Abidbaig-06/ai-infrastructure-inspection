@@ -1,17 +1,9 @@
-const Complaint = require('../models/Complaint');
-const { isUsingMongo, getMemoryDb } = require('../../database/connection');
-const { seedComplaints } = require('../seed/seedData');
+const store = require('../services/complaintStore');
 
 // @desc Get comprehensive dashboard statistics, AI risk distribution, ward hotspots, and SLA compliance
 exports.getDashboardAnalytics = async (req, res) => {
   try {
-    let complaints = [];
-    if (isUsingMongo()) {
-      complaints = await Complaint.find();
-    } else {
-      const db = getMemoryDb();
-      complaints = db.complaints && db.complaints.length > 0 ? db.complaints : seedComplaints;
-    }
+    const complaints = await store.list();
 
     const total = complaints.length;
     const critical = complaints.filter(c => c.aiAnalysis?.severity === 'CRITICAL').length;

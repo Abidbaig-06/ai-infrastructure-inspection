@@ -1,16 +1,5 @@
-const Complaint = require('../models/Complaint');
-const { isUsingMongo, getMemoryDb, persistMemoryDb } = require('../../database/connection');
 const { analyzeComplaintAI } = require('../services/aiAnalysisEngine');
-const { seedComplaints } = require('../seed/seedData');
-
-// Initialize memory db complaints if empty (seed with demo grievances)
-const initMemoryComplaints = () => {
-  const db = getMemoryDb();
-  if (!db.complaints || db.complaints.length === 0) {
-    db.complaints = JSON.parse(JSON.stringify(seedComplaints));
-    persistMemoryDb();
-  }
-};
+const store = require('../services/complaintStore');
 
 // Generate unique Ticket ID e.g. CP-2026-8941
 const generateTicketId = () => {
@@ -19,66 +8,36 @@ const generateTicketId = () => {
   return `CP-${year}-${randomNum}`;
 };
 
+// Apply query filters/sort/limit to a plain complaint array
+const applyQuery = (rows, { category, severity, status, ward, search, sortBy, limit = 50 }) => {
+  let list = [...rows];
+  if (category && category !== 'ALL') list = list.filter(c => c.category === category);
+  if (severity && severity !== 'ALL') list = list.filter(c => c.aiAnalysis?.severity === severity);
+  if (status && status !== 'ALL') list = list.filter(c => c.status === status);
+  if (ward && ward !== 'ALL') list = list.filter(c => c.location?.ward === ward);
+  if (search) {
+    const s = String(search).toLowerCase();
+    list = list.filter(c =>
+      c.ticketId?.toLowerCase().includes(s) ||
+      c.title?.toLowerCase().includes(s) ||
+      c.description?.toLowerCase().includes(s) ||
+      c.location?.address?.toLowerCase().includes(s)
+    );
+  }
+  if (sortBy === 'risk') {
+    list.sort((a, b) => (b.aiAnalysis?.riskScore || 0) - (a.aiAnalysis?.riskScore || 0));
+  } else {
+    list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  }
+  return list.slice(0, Number(limit) || 50);
+};
+
 // @desc Get all complaints with filtering & sorting
 exports.getComplaints = async (req, res) => {
   try {
-    const { category, severity, status, ward, search, sortBy, limit = 50 } = req.query;
-
-    if (isUsingMongo()) {
-      let query = {};
-      if (category && category !== 'ALL') query.category = category;
-      if (severity && severity !== 'ALL') query['aiAnalysis.severity'] = severity;
-      if (status && status !== 'ALL') query.status = status;
-      if (ward && ward !== 'ALL') query['location.ward'] = ward;
-      if (search) {
-        query.$or = [
-          { ticketId: { $regex: search, $options: 'i' } },
-          { title: { $regex: search, $options: 'i' } },
-          { description: { $regex: search, $options: 'i' } },
-          { 'location.address': { $regex: search, $options: 'i' } }
-        ];
-      }
-
-      const sortOption = sortBy === 'risk' 
-        ? { 'aiAnalysis.riskScore': -1 } 
-        : { createdAt: -1 };
-
-      const complaints = await Complaint.find(query).sort(sortOption).limit(Number(limit));
-      return res.json({ success: true, count: complaints.length, data: complaints });
-    } else {
-      initMemoryComplaints();
-      let list = [...getMemoryDb().complaints];
-
-      if (category && category !== 'ALL') {
-        list = list.filter(c => c.category === category);
-      }
-      if (severity && severity !== 'ALL') {
-        list = list.filter(c => c.aiAnalysis?.severity === severity);
-      }
-      if (status && status !== 'ALL') {
-        list = list.filter(c => c.status === status);
-      }
-      if (ward && ward !== 'ALL') {
-        list = list.filter(c => c.location?.ward === ward);
-      }
-      if (search) {
-        const s = search.toLowerCase();
-        list = list.filter(c => 
-          c.ticketId?.toLowerCase().includes(s) ||
-          c.title?.toLowerCase().includes(s) ||
-          c.description?.toLowerCase().includes(s) ||
-          c.location?.address?.toLowerCase().includes(s)
-        );
-      }
-
-      if (sortBy === 'risk') {
-        list.sort((a, b) => (b.aiAnalysis?.riskScore || 0) - (a.aiAnalysis?.riskScore || 0));
-      } else {
-        list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      }
-
-      return res.json({ success: true, count: list.length, data: list.slice(0, Number(limit)) });
-    }
+    const all = await store.list();
+    const data = applyQuery(all, req.query);
+    return res.json({ success: true, count: data.length, data });
   } catch (err) {
     console.error('Error fetching complaints:', err);
     res.status(500).json({ success: false, message: 'Server error retrieving complaints' });
@@ -88,22 +47,11 @@ exports.getComplaints = async (req, res) => {
 // @desc Get single complaint by ticketId
 exports.getComplaintByTicketId = async (req, res) => {
   try {
-    const { ticketId } = req.params;
-
-    if (isUsingMongo()) {
-      const complaint = await Complaint.findOne({ ticketId: ticketId.toUpperCase() });
-      if (!complaint) {
-        return res.status(404).json({ success: false, message: 'Grievance ticket not found' });
-      }
-      return res.json({ success: true, data: complaint });
-    } else {
-      initMemoryComplaints();
-      const complaint = getMemoryDb().complaints.find(c => c.ticketId?.toUpperCase() === ticketId.toUpperCase() || c._id === ticketId);
-      if (!complaint) {
-        return res.status(404).json({ success: false, message: 'Grievance ticket not found' });
-      }
-      return res.json({ success: true, data: complaint });
+    const complaint = await store.findByTicket(req.params.ticketId);
+    if (!complaint) {
+      return res.status(404).json({ success: false, message: 'Grievance ticket not found' });
     }
+    return res.json({ success: true, data: complaint });
   } catch (err) {
     console.error('Error fetching complaint:', err);
     res.status(500).json({ success: false, message: 'Server error retrieving ticket' });
@@ -114,23 +62,9 @@ exports.getComplaintByTicketId = async (req, res) => {
 exports.createComplaint = async (req, res) => {
   try {
     const {
-      title,
-      description,
-      category,
-      imageUrl,
-      multiAngleImages,
-      latitude,
-      longitude,
-      address,
-      landmark,
-      ward,
-      zone,
-      pincode,
-      citizenName,
-      citizenPhone,
-      citizenEmail,
-      priorityClaimed,
-      anonymous
+      title, description, category, imageUrl, multiAngleImages,
+      latitude, longitude, address, landmark, ward, zone, pincode,
+      citizenName, citizenPhone, citizenEmail, priorityClaimed, anonymous
     } = req.body;
 
     if (!title || !description || !category) {
@@ -139,18 +73,16 @@ exports.createComplaint = async (req, res) => {
 
     const ticketId = generateTicketId();
 
-    // Trigger AI Vision & Hazard Assessment
     const aiAnalysis = await analyzeComplaintAI({
-      title,
-      description,
-      category,
+      title, description, category,
       ward: ward || '',
       location: { latitude, longitude, address },
-      imageUrl,
-      priorityClaimed
+      imageUrl, priorityClaimed
     });
 
+    const nowIso = new Date().toISOString();
     const newComplaintData = {
+      _id: 'cmp_' + Date.now(),
       ticketId,
       title,
       description,
@@ -172,55 +104,40 @@ exports.createComplaint = async (req, res) => {
         email: citizenEmail || '',
         anonymous: Boolean(anonymous)
       },
-      status: 'PENDING',
+      status: 'AI_TRIAGED',
       aiAnalysis,
       assignedCrew: {
-        crewId: null,
-        teamLead: null,
-        contactPhone: null,
-        dispatchedAt: null,
-        etaMinutes: null,
-        status: 'UNASSIGNED'
+        crewId: null, teamLead: null, contactPhone: null,
+        dispatchedAt: null, etaMinutes: null, status: 'UNASSIGNED'
       },
       workOrderRef: null,
       timeline: [
         {
           action: 'Citizen Grievance Registered',
           by: anonymous ? 'Anonymous Citizen' : (citizenName || 'Citizen Portal'),
-          timestamp: new Date().toISOString(),
+          timestamp: nowIso,
           note: `Registered with live GPS coordinates (${Number(latitude) || 16.3125}, ${Number(longitude) || 80.4280})`,
           badgeColor: 'blue'
         },
         {
           action: 'AI Vision & Hazard Triage Completed',
           by: 'CivicPulse Neural Triage Engine',
-          timestamp: new Date().toISOString(),
+          timestamp: nowIso,
           note: `Classified as ${aiAnalysis.severity} severity (Risk Score: ${aiAnalysis.riskScore}/100). SLA: ${aiAnalysis.slaHours}h.`,
           badgeColor: aiAnalysis.severity === 'CRITICAL' ? 'red' : aiAnalysis.severity === 'HIGH' ? 'amber' : 'green'
         }
       ],
       resolutionProof: {
-        resolvedAt: null,
-        resolvedBy: null,
-        beforeImageUrl: imageUrl || '',
-        afterImageUrl: '',
-        resolutionNotes: '',
-        citizenFeedbackRating: null
+        resolvedAt: null, resolvedBy: null,
+        beforeImageUrl: imageUrl || '', afterImageUrl: '',
+        resolutionNotes: '', citizenFeedbackRating: null
       },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      createdAt: nowIso,
+      updatedAt: nowIso
     };
 
-    if (isUsingMongo()) {
-      const complaint = await Complaint.create(newComplaintData);
-      return res.status(201).json({ success: true, data: complaint });
-    } else {
-      initMemoryComplaints();
-      newComplaintData._id = 'cmp_' + Date.now();
-      getMemoryDb().complaints.unshift(newComplaintData);
-      persistMemoryDb();
-      return res.status(201).json({ success: true, data: newComplaintData });
-    }
+    const saved = await store.create(newComplaintData);
+    return res.status(201).json({ success: true, data: saved });
   } catch (err) {
     console.error('Error creating complaint:', err);
     res.status(500).json({ success: false, message: 'Server error registering grievance' });
@@ -234,36 +151,21 @@ exports.updateComplaintStatus = async (req, res) => {
     const { status, note, officerName } = req.body;
 
     const timelineEntry = {
-      action: `Status Updated to ${status.replace('_', ' ')}`,
+      action: `Status Updated to ${String(status || '').replace('_', ' ')}`,
       by: officerName || 'Municipal Officer',
       timestamp: new Date().toISOString(),
       note: note || `Progress status updated to ${status}.`,
       badgeColor: status === 'RESOLVED' ? 'green' : status === 'CREW_DISPATCHED' ? 'amber' : 'blue'
     };
 
-    if (isUsingMongo()) {
-      const complaint = await Complaint.findOne({ $or: [{ _id: id }, { ticketId: id }] });
-      if (!complaint) return res.status(404).json({ success: false, message: 'Ticket not found' });
-
-      complaint.status = status;
-      complaint.timeline.push(timelineEntry);
-      complaint.updatedAt = new Date();
-      await complaint.save();
-
-      return res.json({ success: true, data: complaint });
-    } else {
-      initMemoryComplaints();
-      const complaint = getMemoryDb().complaints.find(c => c._id === id || c.ticketId === id);
-      if (!complaint) return res.status(404).json({ success: false, message: 'Ticket not found' });
-
-      complaint.status = status;
-      complaint.timeline = complaint.timeline || [];
-      complaint.timeline.push(timelineEntry);
-      complaint.updatedAt = new Date().toISOString();
-      persistMemoryDb();
-
-      return res.json({ success: true, data: complaint });
-    }
+    const updated = await store.update(id, (c) => {
+      c.status = status;
+      c.timeline = c.timeline || [];
+      c.timeline.push(timelineEntry);
+      return c;
+    });
+    if (!updated) return res.status(404).json({ success: false, message: 'Ticket not found' });
+    return res.json({ success: true, data: updated });
   } catch (err) {
     console.error('Error updating complaint:', err);
     res.status(500).json({ success: false, message: 'Server error updating status' });
@@ -293,30 +195,15 @@ exports.assignCrew = async (req, res) => {
       badgeColor: 'amber'
     };
 
-    if (isUsingMongo()) {
-      const complaint = await Complaint.findOne({ $or: [{ _id: id }, { ticketId: id }] });
-      if (!complaint) return res.status(404).json({ success: false, message: 'Ticket not found' });
-
-      complaint.status = 'CREW_DISPATCHED';
-      complaint.assignedCrew = crewPayload;
-      complaint.timeline.push(timelineEntry);
-      complaint.updatedAt = new Date();
-      await complaint.save();
-
-      return res.json({ success: true, data: complaint });
-    } else {
-      initMemoryComplaints();
-      const complaint = getMemoryDb().complaints.find(c => c._id === id || c.ticketId === id);
-      if (!complaint) return res.status(404).json({ success: false, message: 'Ticket not found' });
-
-      complaint.status = 'CREW_DISPATCHED';
-      complaint.assignedCrew = crewPayload;
-      complaint.timeline.push(timelineEntry);
-      complaint.updatedAt = new Date().toISOString();
-      persistMemoryDb();
-
-      return res.json({ success: true, data: complaint });
-    }
+    const updated = await store.update(id, (c) => {
+      c.status = 'CREW_DISPATCHED';
+      c.assignedCrew = crewPayload;
+      c.timeline = c.timeline || [];
+      c.timeline.push(timelineEntry);
+      return c;
+    });
+    if (!updated) return res.status(404).json({ success: false, message: 'Ticket not found' });
+    return res.json({ success: true, data: updated });
   } catch (err) {
     console.error('Error assigning crew:', err);
     res.status(500).json({ success: false, message: 'Server error assigning field crew' });
@@ -345,32 +232,16 @@ exports.resolveComplaint = async (req, res) => {
       badgeColor: 'green'
     };
 
-    if (isUsingMongo()) {
-      const complaint = await Complaint.findOne({ $or: [{ _id: id }, { ticketId: id }] });
-      if (!complaint) return res.status(404).json({ success: false, message: 'Ticket not found' });
-
-      complaint.status = 'RESOLVED';
-      complaint.resolutionProof = resolutionPayload;
-      if (complaint.assignedCrew) complaint.assignedCrew.status = 'COMPLETED';
-      complaint.timeline.push(timelineEntry);
-      complaint.updatedAt = new Date();
-      await complaint.save();
-
-      return res.json({ success: true, data: complaint });
-    } else {
-      initMemoryComplaints();
-      const complaint = getMemoryDb().complaints.find(c => c._id === id || c.ticketId === id);
-      if (!complaint) return res.status(404).json({ success: false, message: 'Ticket not found' });
-
-      complaint.status = 'RESOLVED';
-      complaint.resolutionProof = resolutionPayload;
-      if (complaint.assignedCrew) complaint.assignedCrew.status = 'COMPLETED';
-      complaint.timeline.push(timelineEntry);
-      complaint.updatedAt = new Date().toISOString();
-      persistMemoryDb();
-
-      return res.json({ success: true, data: complaint });
-    }
+    const updated = await store.update(id, (c) => {
+      c.status = 'RESOLVED';
+      c.resolutionProof = resolutionPayload;
+      if (c.assignedCrew) c.assignedCrew.status = 'COMPLETED';
+      c.timeline = c.timeline || [];
+      c.timeline.push(timelineEntry);
+      return c;
+    });
+    if (!updated) return res.status(404).json({ success: false, message: 'Ticket not found' });
+    return res.json({ success: true, data: updated });
   } catch (err) {
     console.error('Error resolving complaint:', err);
     res.status(500).json({ success: false, message: 'Server error resolving complaint' });

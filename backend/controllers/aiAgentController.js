@@ -5,9 +5,7 @@ const {
   getAllAssetsList,
   assetMaintenanceHistory
 } = require('../../ai-agents');
-const Complaint = require('../models/Complaint');
-const { isUsingMongo, getMemoryDb } = require('../../database/connection');
-const { seedComplaints } = require('../seed/seedData');
+const store = require('../services/complaintStore');
 const { detectDefectsNvidia } = require('../services/nvidiaVisionEngine');
 
 // @desc Live computer-vision defect detection via NVIDIA NIM vision model
@@ -51,13 +49,7 @@ exports.getPrioritizedPlan = async (req, res) => {
   try {
     const { monthlyBudgetUSD = 25000, availableCrewsCount = 4 } = req.query;
 
-    let complaints = [];
-    if (isUsingMongo()) {
-      complaints = await Complaint.find();
-    } else {
-      const db = getMemoryDb();
-      complaints = db.complaints && db.complaints.length > 0 ? db.complaints : seedComplaints;
-    }
+    const complaints = await store.list();
 
     const plan = optimizeMaintenancePlan({
       complaints,
