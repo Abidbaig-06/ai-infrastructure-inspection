@@ -24,7 +24,8 @@ export const AIAnalysisModal = ({
   isOpen,
   onClose,
   onOpenDispatch,
-  onOpenWorkOrder
+  onOpenWorkOrder,
+  onOpenCvTab
 }) => {
   const { updateStatus, resolveComplaint } = useGrievance();
   const { currentUser } = useAuth();
@@ -145,13 +146,12 @@ export const AIAnalysisModal = ({
 
                 <div className="w-full bg-zinc-900 rounded-full h-2 mt-2.5 overflow-hidden border border-white/10">
                   <div
-                    className={`h-2 rounded-full ${
-                      (ai.riskScore || 50) > 80
+                    className={`h-2 rounded-full ${(ai.riskScore || 50) > 80
                         ? 'bg-red-500 shadow-[0_0_6px_#ef4444]'
                         : (ai.riskScore || 50) > 60
-                        ? 'bg-orange-500'
-                        : 'bg-amber-500'
-                    }`}
+                          ? 'bg-orange-500'
+                          : 'bg-amber-500'
+                      }`}
                     style={{ width: `${ai.riskScore || 50}%` }}
                   />
                 </div>
@@ -390,6 +390,18 @@ export const AIAnalysisModal = ({
           <div className="flex items-center gap-2">
             {complaint.status !== 'RESOLVED' && (
               <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    if (onOpenCvTab) onOpenCvTab(complaint);
+                  }}
+                  className="white-gloss-btn inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-black text-xs text-black transition-all cursor-pointer shadow-lg hover:opacity-95"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-black" />
+                  <span>AI Vision & Defect Detection</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => {

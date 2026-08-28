@@ -33,3 +33,16 @@ Thumbs.db
 # Local runtime data
 uploads/*
 !uploads/.gitkeep
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.pt
+*.pth
+gdino_checkpoints/*.pth
+sam2.1_hiera_tiny.pt

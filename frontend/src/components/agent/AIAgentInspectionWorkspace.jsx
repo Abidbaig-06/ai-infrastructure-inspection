@@ -17,7 +17,8 @@ import {
   Zap,
   TrendingUp,
   Sliders,
-  DollarSign
+  DollarSign,
+  ExternalLink
 } from 'lucide-react';
 
 export const AIAgentInspectionWorkspace = ({
@@ -38,6 +39,36 @@ export const AIAgentInspectionWorkspace = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showBoundingBoxes, setShowBoundingBoxes] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(false);
+
+  // Opens the Repo 2 AI Agent in a new tab and hands off the complaint image with auto-scan
+  const AI_AGENT_URL = 'http://127.0.0.1:8765/';
+  const handleOpenAIAgent = () => {
+    const agentWindow = window.open(AI_AGENT_URL, 'ai-infra-agent');
+    if (!agentWindow) {
+      alert('Please allow pop-ups for this site to open the AI Vision Agent.');
+      return;
+    }
+    const imageUrl = complaint?.imageUrl || null;
+    const sendImage = () => {
+      agentWindow.postMessage(
+        {
+          type: 'INSPECT_IMAGE',
+          imageUrl: imageUrl,
+          image: imageUrl,
+          name: complaint?.title || 'complaint_image.jpg',
+          title: complaint?.title || '',
+          category: complaint?.category?.toLowerCase() || 'road'
+        },
+        AI_AGENT_URL
+      );
+    };
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      try { sendImage(); } catch (_) {}
+      if (attempts >= 5) clearInterval(interval);
+    }, 1000);
+  };
 
   // Defect Dataset tailored to active complaint
   const detectedDefects = isRoad
@@ -163,6 +194,16 @@ export const AIAgentInspectionWorkspace = ({
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isProcessing ? 'animate-spin text-cyan-400' : ''}`} />
             <span>{isProcessing ? 'Analyzing...' : 'Re-Run AI Agent'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleOpenAIAgent}
+            className="white-gloss-btn text-black font-bold px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-1.5 hover:opacity-95 cursor-pointer shadow-md"
+            title="Open Live 8-Stage AI Vision Agent (Repo 2)"
+          >
+            <ExternalLink className="w-3.5 h-3.5 text-black" />
+            <span>Open 8-Stage AI Agent</span>
           </button>
         </div>
       </div>

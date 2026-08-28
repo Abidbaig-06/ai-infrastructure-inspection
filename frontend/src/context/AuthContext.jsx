@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { loginOfficer, fetchDemoOfficers } from '../services/api';
+import { loginOfficer, registerOfficer, fetchDemoOfficers } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -47,6 +47,27 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const register = async (userData) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await registerOfficer(userData);
+      if (res.success && res.user) {
+        setCurrentUser(res.user);
+        localStorage.setItem('civicpulse_officer', JSON.stringify(res.user));
+        localStorage.setItem('civicpulse_token', res.token);
+        return res.user;
+      } else {
+        throw new Error(res.message || 'Registration failed');
+      }
+    } catch (err) {
+      setError(err.message || 'Registration failed');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const quickDemoLogin = async (officer) => {
     return await login({
       email: officer.email,
@@ -70,6 +91,7 @@ export const AuthProvider = ({ children }) => {
         loading,
         error,
         login,
+        register,
         quickDemoLogin,
         logout
       }}

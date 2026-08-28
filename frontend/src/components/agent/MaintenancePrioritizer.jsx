@@ -115,14 +115,71 @@ const PRIORITIZED_ASSETS = [
   }
 ];
 
-export const MaintenancePrioritizer = ({ onSelectComplaint }) => {
-  const [selectedAsset, setSelectedAsset] = useState(PRIORITIZED_ASSETS[0]);
+export const MaintenancePrioritizer = ({ activeComplaint, complaints = [], onSelectComplaint }) => {
+  // Dynamically build prioritized assets from registered complaints & active scan
+  const dynamicAssets = React.useMemo(() => {
+    const list = [];
+
+    if (activeComplaint) {
+      const cat = (activeComplaint.category || '').toLowerCase();
+      const isRoad = cat.includes('road') || cat.includes('pothole') || cat.includes('asphalt');
+      const isWater = cat.includes('water') || cat.includes('pipe') || cat.includes('drain');
+      const isElectric = cat.includes('electric') || cat.includes('power');
+      const isBridge = cat.includes('bridge') || cat.includes('flyover');
+
+      const severityScore = activeComplaint.aiAnalysis?.compositeRiskScore || activeComplaint.aiAnalysis?.riskScore || 94;
+      const severityText = activeComplaint.aiAnalysis?.severity || (severityScore >= 80 ? 'CRITICAL' : 'HIGH');
+      const costEstimate = isRoad ? 80000 : isBridge ? 120000 : isWater ? 45000 : 25000;
+
+      list.push({
+        code: activeComplaint.ticketId || 'R-104',
+        name: activeComplaint.title || 'Municipal Infrastructure Corridor',
+        issue: activeComplaint.description || `${activeComplaint.title} - AI Detected Structural Defect`,
+        location: activeComplaint.location?.address || activeComplaint.location?.ward || 'Arundelpet Main Road',
+        severity: severityScore,
+        publicImpact: severityScore >= 90 ? 'CRITICAL' : 'HIGH',
+        urgency: severityScore >= 85 ? 'IMMEDIATE' : 'HIGH',
+        recurrence: 78,
+        exposure: 92,
+        priorityRank: severityScore >= 85 ? 'P1 — CRITICAL' : 'P2 — HIGH',
+        costINR: costEstimate,
+        costFormatted: `₹${costEstimate.toLocaleString('en-IN')}`,
+        assignedTeam: isRoad ? 'Road Quick Response Team 01' : isBridge ? 'Bridge Structural Crew 02' : isWater ? 'Hydro Isolation Unit 01' : 'Electrical Rapid Linemen 02',
+        assignedEquipment: isRoad ? 'Asphalt Hot-Box & 2T Compactor' : isBridge ? 'Hydraulic Jacking & NDT Kit' : isWater ? 'Dewatering Pump & Clamp Kit' : 'Insulated Aerial Boom Lift',
+        resourceStatus: 'Assigned',
+        scheduleDate: '28 Aug 2026',
+        scheduleAction: isRoad 
+          ? 'Emergency Pothole Saw-Cutting, Subgrade Compaction & Hot-Mix Bituminous Infill' 
+          : isBridge 
+          ? 'Structural Joint Rehabilitation & Pier NDT Inspection' 
+          : 'High-Pressure Sleeve Clamp Joint Sealing & Conduit Clearance'
+      });
+    }
+
+    // Add other default assets if not duplicated
+    PRIORITIZED_ASSETS.forEach(item => {
+      if (!list.some(x => x.code === item.code || x.name === item.name)) {
+        list.push(item);
+      }
+    });
+
+    return list;
+  }, [activeComplaint]);
+
+  const [selectedAsset, setSelectedAsset] = useState(dynamicAssets[0]);
   const [isApproved, setIsApproved] = useState(false);
 
-  // Budget calculations
+  // Keep selected asset updated when dynamic list changes
+  React.useEffect(() => {
+    if (dynamicAssets.length > 0) {
+      setSelectedAsset(dynamicAssets[0]);
+    }
+  }, [dynamicAssets]);
+
+  // Dynamic Budget calculations
   const totalBudget = 500000; // ₹5,00,000
-  const allocatedBudget = 245000; // ₹2,45,000
-  const remainingBudget = totalBudget - allocatedBudget; // ₹2,55,000
+  const allocatedBudget = dynamicAssets.slice(0, 3).reduce((acc, cur) => acc + (cur.costINR || 0), 0);
+  const remainingBudget = Math.max(0, totalBudget - allocatedBudget);
 
   const handleApprove = () => {
     setIsApproved(true);
@@ -156,12 +213,12 @@ export const MaintenancePrioritizer = ({ onSelectComplaint }) => {
           <select
             value={selectedAsset.code}
             onChange={(e) => {
-              const match = PRIORITIZED_ASSETS.find((a) => a.code === e.target.value);
+              const match = dynamicAssets.find((a) => a.code === e.target.value);
               if (match) setSelectedAsset(match);
             }}
             className="charcoal-glass-input px-3 py-1.5 text-xs rounded-xl font-mono font-bold text-white focus:outline-none"
           >
-            {PRIORITIZED_ASSETS.map((ast) => (
+            {dynamicAssets.map((ast) => (
               <option key={ast.code} value={ast.code} className="bg-zinc-950 text-white">
                 {ast.code} — {ast.name.split(' ')[0]}
               </option>
@@ -282,13 +339,13 @@ export const MaintenancePrioritizer = ({ onSelectComplaint }) => {
             <div className="grid grid-cols-2 gap-3">
               <div className="charcoal-glass p-3.5 rounded-2xl border border-emerald-500/30 bg-emerald-950/20">
                 <span className="text-[10px] font-mono font-bold text-zinc-400 uppercase">Allocated</span>
-                <p className="text-lg font-black font-mono text-emerald-300 mt-0.5">₹2,45,000</p>
-                <span className="text-[10px] font-mono text-emerald-400">49% Utilized</span>
+                <p className="text-lg font-black font-mono text-emerald-300 mt-0.5">₹{allocatedBudget.toLocaleString('en-IN')}</p>
+                <span className="text-[10px] font-mono text-emerald-400">{Math.round((allocatedBudget / totalBudget) * 100)}% Utilized</span>
               </div>
 
               <div className="charcoal-glass p-3.5 rounded-2xl border border-white/15">
                 <span className="text-[10px] font-mono font-bold text-zinc-400 uppercase">Remaining</span>
-                <p className="text-lg font-black font-mono text-white mt-0.5">₹2,55,000</p>
+                <p className="text-lg font-black font-mono text-white mt-0.5">₹{remainingBudget.toLocaleString('en-IN')}</p>
                 <span className="text-[10px] font-mono text-zinc-400">Unallocated Reserve</span>
               </div>
             </div>
@@ -301,7 +358,7 @@ export const MaintenancePrioritizer = ({ onSelectComplaint }) => {
             </span>
 
             <div className="space-y-2 text-xs font-mono">
-              {PRIORITIZED_ASSETS.map((ast) => (
+              {dynamicAssets.map((ast) => (
                 <div
                   key={ast.code}
                   className="flex items-center justify-between p-2.5 rounded-xl bg-black/40 border border-white/5 hover:border-white/20 transition-all"
@@ -367,7 +424,7 @@ export const MaintenancePrioritizer = ({ onSelectComplaint }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 bg-black/40">
-              {PRIORITIZED_ASSETS.slice(0, 3).map((ast) => (
+              {dynamicAssets.slice(0, 4).map((ast) => (
                 <tr key={ast.code} className="hover:bg-white/5 transition-colors">
                   <td className="py-3 px-4 font-bold text-white">{ast.code}</td>
                   <td className="py-3 px-4 text-zinc-200">{ast.assignedTeam}</td>
@@ -397,13 +454,13 @@ export const MaintenancePrioritizer = ({ onSelectComplaint }) => {
 
         <div className="charcoal-glass p-5 rounded-2xl border border-white/15 space-y-4">
           <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-[2px] before:bg-white/20">
-            {PRIORITIZED_ASSETS.map((ast) => (
+            {dynamicAssets.map((ast) => (
               <div key={ast.code} className="relative group">
                 <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-white border-2 border-black shadow-[0_0_6px_#ffffff]" />
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 p-3 rounded-xl bg-black/40 border border-white/10 group-hover:border-white/30 transition-colors">
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-bold font-mono text-purple-300 whitespace-nowrap">
-                      {ast.scheduleDate.split(' ')[0]} {ast.scheduleDate.split(' ')[1]}
+                      {ast.scheduleDate?.split(' ')[0]} {ast.scheduleDate?.split(' ')[1]}
                     </span>
                     <span className="obsidian-pill-glass px-2 py-0.5 text-[10px] font-mono text-white font-bold">
                       {ast.code}
@@ -413,7 +470,7 @@ export const MaintenancePrioritizer = ({ onSelectComplaint }) => {
                     </span>
                   </div>
                   <span className="text-[11px] font-mono text-zinc-400">
-                    {ast.location.split('-')[1]}
+                    {ast.location?.split('-')[1] || ast.location}
                   </span>
                 </div>
               </div>
@@ -441,11 +498,9 @@ export const MaintenancePrioritizer = ({ onSelectComplaint }) => {
                 Recommended Execution Sequence:
               </span>
               <ol className="list-decimal list-inside space-y-1.5 text-xs font-mono text-white font-bold">
-                <li>R-104 (Lakshmipuram 4-Lane Pothole)</li>
-                <li>E-044 (Arundelpet Live Conductor Sag)</li>
-                <li>W-009 (Brodipet Drinking Water Burst)</li>
-                <li>D-018 (Old Guntur Outfall Drain Clog)</li>
-                <li>B-021 (Chuttugunta ROB Joint Spall)</li>
+                {dynamicAssets.map((ast) => (
+                  <li key={ast.code}>{ast.code} ({ast.name.split(' ')[0]} - {ast.issue.slice(0, 35)}...)</li>
+                ))}
               </ol>
             </div>
 

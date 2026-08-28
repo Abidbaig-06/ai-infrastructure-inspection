@@ -37,13 +37,9 @@ const loadMemoryDb = () => {
       memoryDb = JSON.parse(data);
       console.log(`[Storage] Loaded ${memoryDb.complaints?.length || 0} complaints from persistent store.`);
     }
-    if (!memoryDb.complaints || memoryDb.complaints.length === 0) {
-      const { seedUsers, seedComplaints, seedWorkOrders } = require('../backend/seed/seedData');
-      memoryDb.users = seedUsers || [];
-      memoryDb.complaints = seedComplaints || [];
-      memoryDb.workOrders = seedWorkOrders || [];
+    if (!memoryDb.complaints) {
+      memoryDb.complaints = [];
       persistMemoryDb();
-      console.log(`[Storage] Auto-populated memory DB with ${memoryDb.complaints.length} complaints.`);
     }
   } catch (err) {
     console.error('Error loading memory DB:', err.message);

@@ -6,8 +6,8 @@ const { seedComplaints } = require('../seed/seedData');
 // Initialize memory db complaints if empty
 const initMemoryComplaints = () => {
   const db = getMemoryDb();
-  if (!db.complaints || db.complaints.length === 0) {
-    db.complaints = JSON.parse(JSON.stringify(seedComplaints));
+  if (!db.complaints) {
+    db.complaints = [];
     persistMemoryDb();
   }
 };
@@ -25,15 +25,6 @@ exports.getComplaints = async (req, res) => {
     const { category, severity, status, ward, search, sortBy, limit = 50 } = req.query;
 
     if (isUsingMongo()) {
-      const currentTotal = await Complaint.countDocuments();
-      if (currentTotal === 0) {
-        try {
-          await Complaint.insertMany(seedComplaints);
-        } catch (e) {
-          console.error('Auto-seed complaints error:', e.message);
-        }
-      }
-
       let query = {};
       if (category && category !== 'ALL') query.category = category;
       if (severity && severity !== 'ALL') query['aiAnalysis.severity'] = severity;
@@ -153,7 +144,7 @@ exports.createComplaint = async (req, res) => {
       title,
       description,
       category,
-      ward: ward || 'Ward 04 - Lakshmipuram Main Road & Hindu College',
+      ward: ward || '',
       location: { latitude, longitude, address },
       imageUrl,
       priorityClaimed
@@ -164,16 +155,16 @@ exports.createComplaint = async (req, res) => {
       title,
       description,
       category,
-      imageUrl: imageUrl || multiAngleImages?.front || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800&auto=format&fit=crop&q=80',
+      imageUrl: imageUrl || multiAngleImages?.front || '',
       multiAngleImages: multiAngleImages || {},
       location: {
         latitude: Number(latitude) || 16.3125,
         longitude: Number(longitude) || 80.4280,
-        address: address || 'Lakshmipuram Main Road, Guntur',
+        address: address || '',
         landmark: landmark || '',
-        ward: ward || 'Ward 04 - Lakshmipuram Main Road & Hindu College',
-        zone: zone || 'Zone 2 - Guntur West',
-        pincode: pincode || '522007'
+        ward: ward ? String(ward).trim() : '',
+        zone: zone || '',
+        pincode: pincode || ''
       },
       citizen: {
         name: anonymous ? 'Anonymous Citizen' : (citizenName || 'GMC Citizen'),
@@ -181,7 +172,7 @@ exports.createComplaint = async (req, res) => {
         email: citizenEmail || '',
         anonymous: Boolean(anonymous)
       },
-      status: 'AI_TRIAGED',
+      status: 'PENDING',
       aiAnalysis,
       assignedCrew: {
         crewId: null,
@@ -197,7 +188,7 @@ exports.createComplaint = async (req, res) => {
           action: 'Citizen Grievance Registered',
           by: anonymous ? 'Anonymous Citizen' : (citizenName || 'Citizen Portal'),
           timestamp: new Date().toISOString(),
-          note: `Registered with Guntur GPS coordinates (${Number(latitude) || 16.3125}, ${Number(longitude) || 80.4280})`,
+          note: `Registered with live GPS coordinates (${Number(latitude) || 16.3125}, ${Number(longitude) || 80.4280})`,
           badgeColor: 'blue'
         },
         {

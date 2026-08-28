@@ -1,9 +1,11 @@
 import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { CheckCircle2, QrCode, Shield, ArrowRight, Printer, Share2, Copy, Clock, Building2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { CheckCircle2, Printer, Copy } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export const TicketSuccessModal = ({ ticket, onClose }) => {
+  const navigate = useNavigate();
+
   useEffect(() => {
     try {
       confetti({
@@ -25,6 +27,11 @@ export const TicketSuccessModal = ({ ticket, onClose }) => {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleClose = () => {
+    if (onClose) onClose();
+    navigate('/');
   };
 
   return (
@@ -57,7 +64,7 @@ export const TicketSuccessModal = ({ ticket, onClose }) => {
               </span>
               <button
                 onClick={copyTicketId}
-                className="p-1.5 rounded-lg charcoal-pill hover:border-white/50 text-white transition-colors"
+                className="p-1.5 rounded-lg charcoal-pill hover:border-white/50 text-white transition-colors cursor-pointer"
                 title="Copy Ticket ID"
               >
                 <Copy className="w-4 h-4" />
@@ -68,77 +75,24 @@ export const TicketSuccessModal = ({ ticket, onClose }) => {
             </p>
           </div>
 
-          {/* Key Summary Grid */}
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="charcoal-glass-card p-3 rounded-xl border border-white/10">
-              <span className="text-[10px] uppercase font-bold text-zinc-400 block mb-1 font-mono">
-                Assigned Dept
-              </span>
-              <p className="font-semibold text-white line-clamp-1">
-                {ticket.aiAnalysis?.assignedDepartment || 'Public Works Dept'}
-              </p>
-            </div>
-
-            <div className="charcoal-glass-card p-3 rounded-xl border border-white/10">
-              <span className="text-[10px] uppercase font-bold text-zinc-400 block mb-1 font-mono">
-                AI Risk Score
-              </span>
-              <div className="flex items-center gap-1.5">
-                <span className={`w-2.5 h-2.5 rounded-full ${ticket.aiAnalysis?.severity === 'CRITICAL' ? 'bg-red-500 shadow-[0_0_6px_#ef4444]' : 'bg-amber-400 shadow-[0_0_6px_#f59e0b]'}`} />
-                <span className="font-bold text-white font-mono">
-                  {ticket.aiAnalysis?.riskScore || 50}/100 ({ticket.aiAnalysis?.severity || 'MEDIUM'})
-                </span>
-              </div>
-            </div>
-
-            <div className="charcoal-glass-card p-3 rounded-xl border border-white/10">
-              <span className="text-[10px] uppercase font-bold text-zinc-400 block mb-1 font-mono">
-                SLA Target
-              </span>
-              <div className="flex items-center gap-1 font-semibold text-white">
-                <Clock className="w-3.5 h-3.5 text-white" />
-                <span>{ticket.aiAnalysis?.slaHours || 48} Hours Max</span>
-              </div>
-            </div>
-
-            <div className="charcoal-glass-card p-3 rounded-xl border border-white/10">
-              <span className="text-[10px] uppercase font-bold text-zinc-400 block mb-1 font-mono">
-                Ward & Zone
-              </span>
-              <p className="font-semibold text-white truncate">
-                {ticket.location?.ward || 'Ward 04'}
-              </p>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="space-y-2.5 pt-2">
-            <Link
-              to={`/track/${ticket.ticketId}`}
-              className="white-gloss-btn w-full py-3.5 px-4 rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-lg transition-all"
+          {/* Action Buttons: Print Official Receipt & Close */}
+          <div className="flex gap-2.5 pt-2">
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="flex-1 py-3 px-4 rounded-xl white-gloss-btn text-black font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg transition-all cursor-pointer hover:opacity-95"
             >
-              <span>Track Live Resolution Timeline</span>
-              <ArrowRight className="w-4 h-4 text-black" />
-            </Link>
+              <Printer className="w-4 h-4 text-black" />
+              <span>Print Official Receipt</span>
+            </button>
 
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handlePrint}
-                className="flex-1 py-2 px-3 rounded-xl white-glass-btn-secondary font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Print Official Receipt</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={onClose}
-                className="py-2 px-4 rounded-xl white-glass-btn-secondary font-semibold text-xs transition-colors"
-              >
-                Close
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="py-3 px-6 rounded-xl white-glass-btn-secondary font-semibold text-xs transition-colors cursor-pointer"
+            >
+              Close
+            </button>
           </div>
         </div>
       </div>

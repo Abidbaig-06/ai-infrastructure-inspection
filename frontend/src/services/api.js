@@ -127,10 +127,27 @@ export const loginOfficer = async (credentials) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials)
     });
-    if (!res.ok) throw new Error('Invalid login credentials');
-    return await res.json();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Invalid login credentials');
+    return data;
   } catch (err) {
     console.error('API Error loginOfficer:', err);
+    throw err;
+  }
+};
+
+export const registerOfficer = async (userData) => {
+  try {
+    const res = await fetch(`${API_BASE}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Registration failed');
+    return data;
+  } catch (err) {
+    console.error('API Error registerOfficer:', err);
     throw err;
   }
 };

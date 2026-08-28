@@ -51,19 +51,11 @@ export const HeroSection = () => {
               <ComplaintButton />
             </div>
 
-            {/* Three System Status Indicators in Pill Capsules */}
+            {/* System Status Indicator Pill */}
             <div className="pt-4 border-t border-white/10 flex flex-wrap items-center gap-2 text-xs font-mono text-zinc-400">
               <span className="obsidian-pill-glass px-3 py-1.5 flex items-center gap-1.5 text-zinc-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_6px_#ffffff]" />
                 <span>GUNTUR MUNICIPAL GRID</span>
-              </span>
-              <span className="obsidian-pill-glass px-3 py-1.5 flex items-center gap-1.5 text-zinc-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_6px_#ffffff]" />
-                <span>AI COMPUTER VISION: ACTIVE</span>
-              </span>
-              <span className="obsidian-pill-glass px-3 py-1.5 flex items-center gap-1.5 text-zinc-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_6px_#ffffff]" />
-                <span>IRC:82 STANDARDS VERIFIED</span>
               </span>
             </div>
           </div>

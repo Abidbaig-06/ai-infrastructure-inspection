@@ -1,9 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { submitComplaint } from '../../services/api';
 import { TicketSuccessModal } from './TicketSuccessModal';
 import { GMC_WARDS, getWardByNameOrId } from '../../services/gmcWards';
-import { sampleHazards } from '../../services/sampleHazards';
-import { classifyImageCategory } from './MultiAngleUploader';
+import { classifyInfrastructureImage, INFRA_CATEGORIES } from '../../services/imageCategoryClassifier';
 import {
   Cpu,
   Sparkles,
@@ -14,16 +13,18 @@ import {
   UploadCloud,
   X,
   RefreshCw,
-  Trash2
+  Trash2,
+  MapPin,
+  Navigation,
+  Crosshair
 } from 'lucide-react';
 
 const CATEGORIES = [
   { id: 'Road Hazard & Pothole', label: 'Road & Pothole', icon: '🚧' },
-  { id: 'Water Leak & Sewage', label: 'Water & Sewage', icon: '💧' },
-  { id: 'Electrical & Live Wire', label: 'Electrical & Wire', icon: '⚡' },
-  { id: 'Street Lighting', label: 'Street Lighting', icon: '💡' },
-  { id: 'Waste & Garbage Dumping', label: 'Waste Dumping', icon: '🗑️' },
-  { id: 'Drainage & Canal Clog', label: 'Drainage Overflow', icon: '🌊' }
+  { id: 'Highway Bridge Structure', label: 'Bridges', icon: '🌉' },
+  { id: 'Building Wall Fissures', label: 'Buildings', icon: '🏢' },
+  { id: 'Drainage & Canal Clog', label: 'Drainage Overflow', icon: '🌊' },
+  { id: 'Other Infrastructure', label: 'Other', icon: '⚙️' }
 ];
 
 export const ComplaintForm = () => {
@@ -37,6 +38,11 @@ export const ComplaintForm = () => {
   const [citizenPhone, setCitizenPhone] = useState('');
   const [anonymous, setAnonymous] = useState(false);
 
+  // Live GPS geolocation state
+  const [gpsLocation, setGpsLocation] = useState(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationStatus, setLocationStatus] = useState(null);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
@@ -46,8 +52,72 @@ export const ComplaintForm = () => {
 
   const fileInputRef = useRef(null);
 
-  // Validate uploaded image against selected category
-  const validation = classifyImageCategory(imageUrl, category);
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    setIsLocating(true);
+    setLocationStatus('Acquiring live GPS coordinates...');
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        const accuracy = Math.round(pos.coords.accuracy || 10);
+
+        setGpsLocation({
+          latitude: lat,
+          longitude: lon,
+          accuracy
+        });
+
+        setLocationStatus(`GPS Locked: ${lat.toFixed(4)}° N, ${lon.toFixed(4)}° E (±${accuracy}m)`);
+
+        try {
+          // Reverse geocoding via OpenStreetMap
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const addr = data.address || {};
+            const street = addr.road || addr.street || addr.pedestrian || addr.suburb || addr.neighbourhood || '';
+            const city = addr.city || addr.town || addr.village || addr.county || '';
+            const state = addr.state || '';
+            const postcode = addr.postcode || '';
+            
+            const fullAddr = [street, city, state, postcode].filter(Boolean).join(', ');
+            if (fullAddr) {
+              setAddress(fullAddr);
+            }
+          }
+        } catch (err) {
+          console.warn('Reverse geocoding error:', err);
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      (err) => {
+        console.error('GPS error:', err);
+        setIsLocating(false);
+        setLocationStatus('GPS permission denied or unavailable.');
+        alert('Could not access live location. Please allow GPS location permission in your browser.');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  };
+
+  const handleCategoryChange = (newCatId) => {
+    setCategory(newCatId);
+    setAiPolishNotice(null);
+    setFormError(null);
+  };
 
   const handleFileUpload = (file) => {
     if (!file || !file.type.startsWith('image/')) {
@@ -55,82 +125,59 @@ export const ComplaintForm = () => {
       return;
     }
     setIsProcessingImage(true);
+    setFormError(null);
     const reader = new FileReader();
     reader.onload = (e) => {
-      setImageUrl(e.target.result);
+      const uploadedData = e.target.result;
+      setImageUrl(uploadedData);
       setIsProcessingImage(false);
-      setFormError(null);
       setAiPolishNotice(null);
     };
     reader.readAsDataURL(file);
   };
 
-  const handleSelectPreset = (hazard) => {
-    setCategory(hazard.category);
-    setTitle(hazard.title);
-    setDescription(hazard.description);
-    setWard(hazard.ward);
-    setAddress(hazard.address);
-    setImageUrl(hazard.imageUrl);
-    setFormError(null);
-    setAiPolishNotice(null);
-  };
-
-  // Image-Grounded AI Enhancement based on the uploaded image
+  // Enhance user's own written text with clear, professional English without fake data
   const handleAIEnhance = async () => {
-    if (!imageUrl) {
-      alert('Please upload or attach a hazard photo first so AI can analyze the visual evidence.');
-      return;
-    }
+    const rawTitle = title.trim();
+    const rawDesc = description.trim();
 
-    if (!validation.isValid) {
-      alert(
-        `Category Mismatch: The uploaded photo appears to be a "${validation.detectedCategory}". Please switch category or replace the photo before AI enhancement.`
-      );
+    if (!rawTitle && !rawDesc) {
+      setFormError('No text written to enhance. Please write a defect title or observation first.');
+      setAiPolishNotice(null);
       return;
     }
 
     setIsPolishing(true);
+    setFormError(null);
     setAiPolishNotice(null);
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    await new Promise((resolve) => setTimeout(resolve, 350));
 
-    if (category === 'Road Hazard & Pothole') {
-      setTitle(title || 'Severe 14.5cm Asphalt Crater & Sub-Base Fracture');
-      setDescription(
-        `[AI VISION ASSESSMENT]: Visual inspection of uploaded photo confirmed severe alligator cracking with sub-base cavitation measuring ~2.8m length, 1.6m width, and 14.5cm depth. High vehicle axle damage and collision hazard on active carriageway. Immediate emergency full-depth cold milling & bituminous compaction required under IRC:82-2015 standards. Citizen notes: "${description || title || 'Deep pothole causing vehicle damage'}"`
-      );
-    } else if (category === 'Water Leak & Sewage') {
-      setTitle(title || 'High-Pressure 300mm Pipeline Rupture & Road Inundation');
-      setDescription(
-        `[AI VISION ASSESSMENT]: Visual inspection detected high-pressure main municipal conduit fracture discharging ~450 L/min with ~48 m² surface inundation. Soil wash-out and cavitation risk threatening road subgrade. Immediate feeder valve isolation & sleeve clamp joint seal required under CPHEEO standards. Citizen notes: "${description || title || 'Water gushing onto avenue'}"`
-      );
-    } else if (category === 'Electrical & Live Wire') {
-      setTitle(title || 'Exposed 440V Overhead Distribution Conductor Sag');
-      setDescription(
-        `[AI VISION ASSESSMENT]: Visual inspection confirmed 440V overhead distribution line sagged to 1.82m clearance (Statutory safe clearance min: 5.5m). Severe electrocution hazard near pedestrian walkway. Immediate rapid lineman isolation required under Central Electricity Authority (CEA) Safety Regulations 2010. Citizen notes: "${description || title || 'Dangling wire near public walkway'}"`
-      );
-    } else if (category === 'Street Lighting') {
-      setTitle(title || 'Illumination Sector Dark Zone & Feeder Pillar Outage');
-      setDescription(
-        `[AI VISION ASSESSMENT]: Visual inspection confirmed non-functional luminaires causing complete road dark corridor (<5 Lux). Lineman circuit inspection and breaker reset required under GMC Municipal Lighting Standards. Citizen notes: "${description || title || 'Street lights out'}"`
-      );
-    } else if (category === 'Waste & Garbage Dumping') {
-      setTitle(title || 'Massive Solid Waste Overflow & Footpath Encroachment');
-      setDescription(
-        `[AI VISION ASSESSMENT]: Visual inspection identified ~3.8 cubic meters of commercial packing debris and municipal solid waste obstructing pedestrian walkway. Immediate hydraulic compactor tipper deployment required under Solid Waste Management Rules 2016. Citizen notes: "${description || title || 'Heavy garbage dump'}"`
-      );
-    } else if (category === 'Drainage & Canal Clog') {
-      setTitle(title || 'Stormwater Drain Silt Obstruction & Sewage Backflow');
-      setDescription(
-        `[AI VISION ASSESSMENT]: Visual inspection detected heavy silt accumulation and debris clogging RCC box culvert causing sewage overflow onto carriageway. High-pressure jetting and de-silting unit deployment required. Citizen notes: "${description || title || 'Drain overflow'}"`
-      );
-    } else {
-      setDescription(
-        `[AI VISION ASSESSMENT]: Visual inspection confirmed municipal infrastructure defect regarding ${category}. Immediate statutory field inspection required. Citizen notes: "${description || title}"`
-      );
+    // Enhance user's written title into clear English
+    if (rawTitle) {
+      const cleanTitle = rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1);
+      setTitle(cleanTitle);
     }
 
-    setAiPolishNotice('AI inspection synthesized engineering defect report from the uploaded image!');
+    // Enhance user's written observation into professional English
+    if (rawDesc) {
+      let cleanDesc = rawDesc
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      cleanDesc = cleanDesc.replace(/(^\s*|[.!?]\s+)([a-z])/g, (m, p1, p2) => p1 + p2.toUpperCase());
+      
+      if (!/[.!?]$/.test(cleanDesc)) {
+        cleanDesc += '.';
+      }
+
+      setDescription(cleanDesc);
+      setAiPolishNotice('Text enhanced with clear, professional English!');
+    } else if (rawTitle) {
+      const cleanDesc = `Observed defect regarding ${rawTitle.toLowerCase()}. Municipal field inspection and maintenance requested to ensure safety.`;
+      setDescription(cleanDesc);
+      setAiPolishNotice('Observation drafted in clear English based on your title!');
+    }
+
     setIsPolishing(false);
   };
 
@@ -142,20 +189,8 @@ export const ComplaintForm = () => {
       return;
     }
 
-    if (!ward) {
-      setFormError('Please select a GMC Municipal Ward (Wards 01 to 57).');
-      return;
-    }
-
-    if (!address.trim()) {
-      setFormError('Please enter the street address or nearby landmark.');
-      return;
-    }
-
-    if (!validation.isValid) {
-      setFormError(
-        `Cannot submit with category mismatch! The uploaded image is detected as "${validation.detectedCategory}", which does not match "${category}". Please switch category or replace the photo.`
-      );
+    if (!imageUrl) {
+      setFormError('Please upload a visual evidence photo of the infrastructure defect.');
       return;
     }
 
@@ -163,19 +198,19 @@ export const ComplaintForm = () => {
     setIsSubmitting(true);
 
     try {
-      const selectedWardObj = getWardByNameOrId(ward);
+      const selectedWardObj = ward ? getWardByNameOrId(ward) : null;
 
       const payload = {
         title,
         description: description || title,
         category,
-        imageUrl: imageUrl || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800&auto=format&fit=crop&q=80',
-        latitude: 16.3067,
-        longitude: 80.4365,
-        address,
-        ward,
-        zone: selectedWardObj?.zone || 'Zone 1 - Central Guntur',
-        pincode: selectedWardObj?.pincode || '522002',
+        imageUrl,
+        latitude: gpsLocation?.latitude || 16.3067,
+        longitude: gpsLocation?.longitude || 80.4365,
+        address: address.trim() || (gpsLocation ? `${gpsLocation.latitude.toFixed(4)}° N, ${gpsLocation.longitude.toFixed(4)}° E` : 'Location on Record'),
+        ward: ward ? ward : '',
+        zone: selectedWardObj?.zone || '',
+        pincode: selectedWardObj?.pincode || '',
         citizenName: anonymous ? 'Anonymous Citizen' : (citizenName || 'GMC Citizen'),
         citizenPhone: anonymous ? 'N/A' : (citizenPhone || 'N/A'),
         isAnonymous: anonymous
@@ -204,11 +239,6 @@ export const ComplaintForm = () => {
               <Cpu className="w-5 h-5 drop-shadow-[0_0_8px_#ffffff]" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="obsidian-pill-glass px-2.5 py-0.5 text-[10px] font-mono text-zinc-300">
-                  GMC PUBLIC CIVIC GRID — 57 WARDS
-                </span>
-              </div>
               <h2 className="text-xl sm:text-2xl font-display font-black text-white tracking-tight mt-0.5">
                 COMPLAINT DIALOGUE BOX
               </h2>
@@ -223,38 +253,6 @@ export const ComplaintForm = () => {
             <span className="text-zinc-500">Statutory SLA: &lt; 4 Hours</span>
           </div>
         </div>
-
-        {/* Category Mismatch Warning Banner */}
-        {!validation.isValid && validation.detectedCategory && (
-          <div className="mb-5 p-3.5 rounded-2xl bg-amber-950/90 border border-amber-500/60 text-amber-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl animate-pulse">
-            <div className="flex items-start gap-2.5">
-              <AlertTriangle className="w-5 h-5 flex-shrink-0 text-amber-400 mt-0.5" />
-              <div>
-                <p className="font-bold text-white tracking-wide">CATEGORY MISMATCH DETECTED</p>
-                <p className="text-[11px] text-amber-200/90 font-mono mt-0.5">
-                  The uploaded photo appears to be a <span className="font-bold underline text-white">"{validation.detectedCategory}"</span>, which does not belong to the selected category <span className="font-bold text-white">"{category}"</span>.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setCategory(validation.detectedCategory)}
-                className="px-3 py-1.5 rounded-full bg-white text-black font-bold text-[11px] hover:bg-zinc-200 transition-colors flex items-center gap-1.5 shadow-md cursor-pointer"
-              >
-                <RefreshCw className="w-3 h-3 text-black" />
-                <span>Switch to {validation.detectedCategory.split('&')[0]}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setImageUrl('')}
-                className="px-2.5 py-1.5 rounded-full bg-red-900/60 border border-red-500/40 text-white font-mono text-[10px] hover:bg-red-800 transition-colors cursor-pointer"
-              >
-                Re-upload
-              </button>
-            </div>
-          </div>
-        )}
 
         {formError && (
           <div className="mb-5 p-3.5 rounded-2xl bg-red-950/80 border border-red-500/50 text-red-200 text-xs flex items-center gap-2 font-mono shadow-lg">
@@ -276,12 +274,12 @@ export const ComplaintForm = () => {
             <label className="block text-[11px] font-mono font-bold text-zinc-300 uppercase tracking-wider mb-2">
               1. Infrastructure Category *
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
               {CATEGORIES.map((cat) => (
                 <button
                   key={cat.id}
                   type="button"
-                  onClick={() => setCategory(cat.id)}
+                  onClick={() => handleCategoryChange(cat.id)}
                   className={`px-3 py-2.5 rounded-full border text-left transition-all cursor-pointer flex items-center gap-2 ${
                     category === cat.id
                       ? 'border-white bg-white/20 shadow-[0_0_20px_rgba(255,255,255,0.3)] text-white font-bold'
@@ -298,7 +296,7 @@ export const ComplaintForm = () => {
           {/* 2. Visual Evidence Single Image Upload */}
           <div>
             <label className="block text-[11px] font-mono font-bold text-zinc-300 uppercase tracking-wider mb-2">
-              2. Visual Evidence (Upload Defect Photo) *
+              2. Visual Evidence (Upload Defect Photo)
             </label>
 
             {imageUrl ? (
@@ -308,9 +306,9 @@ export const ComplaintForm = () => {
                   alt="Uploaded defect"
                   className="w-full h-full object-cover opacity-95 group-hover:scale-102 transition-transform duration-300"
                 />
-                <div className="absolute top-3 left-3 obsidian-pill-glass px-3 py-1 text-[11px] font-mono text-zinc-200 flex items-center gap-1.5">
+                <div className="absolute top-3 left-3 obsidian-pill-glass px-3 py-1 text-[11px] font-mono text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 bg-black/80">
                   <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Photo Attached & Verified</span>
+                  <span>Photo Attached ({CATEGORIES.find(c => c.id === category)?.label || category})</span>
                 </div>
                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                   <button
@@ -360,31 +358,6 @@ export const ComplaintForm = () => {
               }}
               className="hidden"
             />
-
-            {/* Quick URL or Preset Row */}
-            <div className="mt-3 flex flex-col sm:flex-row items-center justify-between gap-2">
-              <input
-                type="url"
-                placeholder="Or paste photo URL here..."
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                className="charcoal-glass-input w-full sm:w-80 px-3.5 py-1.5 text-xs rounded-full text-white placeholder:text-zinc-500 focus:outline-none"
-              />
-
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-[10px] font-mono text-zinc-400">Quick Presets:</span>
-                {sampleHazards.map((h) => (
-                  <button
-                    key={h.id}
-                    type="button"
-                    onClick={() => handleSelectPreset(h)}
-                    className="obsidian-pill-glass px-2.5 py-1 text-[10px] font-mono text-zinc-300 hover:text-white transition-colors cursor-pointer"
-                  >
-                    {h.badge.split(' ')[1] || h.badge}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
 
           {/* 3. Issue Title, AI-Grounded Detailed Observation & Location */}
@@ -398,7 +371,7 @@ export const ComplaintForm = () => {
                 <input
                   type="text"
                   required
-                  placeholder="e.g., Severe Pothole with Sub-Base Fracture on Main Road"
+                  placeholder="e.g., Structural Fissure or Pothole on Carriageway"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="charcoal-glass-input w-full px-4 py-2.5 text-xs rounded-2xl text-white placeholder:text-zinc-500 focus:outline-none"
@@ -408,7 +381,7 @@ export const ComplaintForm = () => {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-[11px] font-mono font-bold text-zinc-300 uppercase tracking-wider">
-                    Detailed Observation (AI Enhanced from Image)
+                    Detailed Observation
                   </label>
                   <button
                     type="button"
@@ -417,12 +390,12 @@ export const ComplaintForm = () => {
                     className="obsidian-pill-glass px-3 py-1 text-[10px] font-mono text-zinc-300 hover:text-white flex items-center gap-1.5 cursor-pointer shadow-md hover:border-white transition-colors"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-white" />
-                    <span>{isPolishing ? 'Analyzing Photo...' : 'Enhance with AI (From Image)'}</span>
+                    <span>{isPolishing ? 'Enhancing Text...' : 'Enhance with AI'}</span>
                   </button>
                 </div>
                 <textarea
                   rows={3}
-                  placeholder="Click 'Enhance with AI' above or describe depth, extent, or immediate danger..."
+                  placeholder="Describe defect observations, location specifics, or hazards. Click 'Enhance with AI' to polish..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="charcoal-glass-input w-full px-4 py-2.5 text-xs rounded-2xl text-white placeholder:text-zinc-500 focus:outline-none"
@@ -430,20 +403,71 @@ export const ComplaintForm = () => {
               </div>
             </div>
 
-            {/* Location & GMC Wards (All 57 Wards) */}
-            <div className="md:col-span-5 space-y-4">
+            {/* Location & GMC Wards */}
+            <div className="md:col-span-5 space-y-3">
               <div>
                 <label className="block text-[11px] font-mono font-bold text-zinc-300 uppercase tracking-wider mb-1">
-                  GMC Municipal Ward (All 57 Wards) *
+                  Live Location & Geotag
+                </label>
+                <button
+                  type="button"
+                  onClick={handleUseCurrentLocation}
+                  disabled={isLocating}
+                  className="w-full obsidian-pill-glass px-4 py-2.5 rounded-2xl border border-white/20 hover:border-emerald-400 bg-white/5 hover:bg-emerald-500/10 text-xs font-bold text-white flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg group"
+                >
+                  {isLocating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
+                      <span className="text-emerald-300 font-mono">Acquiring Live GPS Position...</span>
+                    </>
+                  ) : gpsLocation ? (
+                    <>
+                      <CheckCircle className="w-4 h-4 text-emerald-400" />
+                      <span className="text-emerald-300 font-mono">
+                        GPS Locked: {gpsLocation.latitude.toFixed(4)}° N, {gpsLocation.longitude.toFixed(4)}° E
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Navigation className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+                      <span>Use Current Location</span>
+                      <span className="text-[10px] font-mono text-zinc-400 font-normal">(Instant GPS & Address)</span>
+                    </>
+                  )}
+                </button>
+
+                {locationStatus && (
+                  <p className="text-[10px] font-mono text-emerald-400 mt-1 px-1 flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    <span>{locationStatus}</span>
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono font-bold text-zinc-300 uppercase tracking-wider mb-1">
+                  Street Address / Landmark (Auto or Manual)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Near Hindu Pharmacy College, Main Road"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="charcoal-glass-input w-full px-4 py-2.5 text-xs rounded-2xl text-white placeholder:text-zinc-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono font-bold text-zinc-300 uppercase tracking-wider mb-1">
+                  GMC Municipal Ward (Optional)
                 </label>
                 <select
-                  required
                   value={ward}
                   onChange={(e) => setWard(e.target.value)}
                   className="charcoal-glass-input w-full px-3.5 py-2.5 text-xs rounded-2xl text-white focus:outline-none"
                 >
                   <option value="" className="bg-zinc-950 text-zinc-500">
-                    -- Select GMC Municipal Ward (1-57) --
+                    -- Select GMC Municipal Ward (Optional) --
                   </option>
                   {GMC_WARDS.map((w) => (
                     <option key={w.id} value={w.name} className="bg-zinc-950 text-white">
@@ -451,20 +475,6 @@ export const ComplaintForm = () => {
                     </option>
                   ))}
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-mono font-bold text-zinc-300 uppercase tracking-wider mb-1">
-                  Street Address / Landmark *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g., Near Hindu Pharmacy College, Main Junction"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  className="charcoal-glass-input w-full px-4 py-2.5 text-xs rounded-2xl text-white placeholder:text-zinc-500 focus:outline-none"
-                />
               </div>
             </div>
           </div>

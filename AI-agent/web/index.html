@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Infrastructure Inspection Agent | Multi-Category Live Vision</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="app.css">
+  <link rel="preload" as="image" href="/images/image.png">
+  <link rel="preload" as="image" href="/images/pothole.jpg">
+</head>
+
+<body class="dark-theme">
+  <!-- Top Application Bar -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="brand-badge">
+        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+        </svg>
+        <div class="brand-titles">
+          <h1 class="brand-name">INFRA AGENT</h1>
+          <span class="brand-sub">Roads • Buildings • Bridges • Drainage / Water • Public Infrastructure</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-center">
+      <div class="page-nav-pill">
+        <button id="btnPage1" class="page-nav-btn active" onclick="switchPage(1)">
+          <span class="nav-num">1</span>
+          <span>STAGES 1–6 (DETECTION & MASKS)</span>
+        </button>
+        <button id="btnPage2" class="page-nav-btn" onclick="switchPage(2)">
+          <span class="nav-num">2</span>
+          <span>STAGES 7–8 (ANALYSIS & METRICS)</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <input type="file" id="imageFileInput" accept="image/*" multiple style="display:none;"
+        onchange="handleFileUpload(event)">
+
+      <button id="btnExportReport" class="btn btn-outline" onclick="openReportModal()">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+          <polyline points="10 9 9 9 8 9" />
+        </svg>
+        <span>Export Report</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 8-Stage Top Progress Stepper -->
+  <section class="stepper-section">
+    <div class="stepper-container" id="stepperContainer">
+      <div class="stepper-track">
+        <div class="stepper-progress-fill" id="stepperFill"></div>
+      </div>
+
+      <div class="step-node pending" id="stepNode1" onclick="handleTimelineNodeClick(1)">
+        <div class="node-circle">1</div>
+        <div class="node-label">
+          <span class="node-title">1. Image</span>
+        </div>
+      </div>
+
+      <div class="step-node pending" id="stepNode2" onclick="handleTimelineNodeClick(2)">
+        <div class="node-circle">2</div>
+        <div class="node-label">
+          <span class="node-title" id="stepTitle2">2. Infrastructure</span>
+        </div>
+      </div>
+
+      <div class="step-node pending" id="stepNode3" onclick="handleTimelineNodeClick(3)">
+        <div class="node-circle">3</div>
+        <div class="node-label">
+          <span class="node-title" id="stepTitle3">3. Defects</span>
+        </div>
+      </div>
+
+      <div class="step-node pending" id="stepNode4" onclick="handleTimelineNodeClick(4)">
+        <div class="node-circle">4</div>
+        <div class="node-label">
+          <span class="node-title" id="stepTitle4">4. Segmenting</span>
+        </div>
+      </div>
+
+      <div class="step-node pending" id="stepNode5" onclick="handleTimelineNodeClick(5)">
+        <div class="node-circle">5</div>
+        <div class="node-label">
+          <span class="node-title" id="stepTitle5">5. Surroundings</span>
+        </div>
+      </div>
+
+      <div class="step-node pending" id="stepNode6" onclick="handleTimelineNodeClick(6)">
+        <div class="node-circle">6</div>
+        <div class="node-label">
+          <span class="node-title" id="stepTitle6">6. Measurements</span>
+        </div>
+      </div>
+
+      <div class="step-node pending" id="stepNode7" onclick="handleTimelineNodeClick(7)">
+        <div class="node-circle">7</div>
+        <div class="node-label">
+          <span class="node-title" id="stepTitle7">7. Radiothermal</span>
+        </div>
+      </div>
+
+      <div class="step-node pending" id="stepNode8" onclick="handleTimelineNodeClick(8)">
+        <div class="node-circle">8</div>
+        <div class="node-label">
+          <span class="node-title" id="stepTitle8">8. Result</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Work Area (Two Pages) -->
+  <main class="main-layout">
+    <!-- Center / Left Inspection Viewport -->
+    <div class="viewport-column">
+
+      <!-- ================= PAGE 1: STAGES 1 TO 6 ================= -->
+      <div id="page1Container" class="inspection-page active">
+        <div class="page-header-row">
+          <div class="page-title-group">
+            <h2 class="page-title">INFRASTRUCTURE IDENTIFICATION, DEFECTS, SURROUNDINGS & MEASUREMENTS</h2>
+            <p class="page-desc">Stages 1 through 6: Infrastructure identification, SAM 2 segmentation, surrounding zone
+              mapping, and calibrated physical measurements.</p>
+          </div>
+          <div class="page-controls">
+            <span class="badge-infra-type" id="topInfraTypeBadge">ROAD / PAVEMENT</span>
+            <button class="btn btn-primary btn-sm" onclick="switchPage(2)">
+              <span>Next: Radiothermal & Master (Stages 7–8)</span>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="stages-grid-6">
+          <!-- Stage 1 Card -->
+          <div class="stage-card" id="cardStage1" onclick="openStageDetail(1)">
+            <div class="stage-card-header">
+              <div class="header-tag">
+                <span class="tag-num">1</span>
+                <span class="tag-title">IMAGE LOADED (ORIGINAL)</span>
+              </div>
+              <div class="header-actions">
+                <button class="btn-stage-scan" id="btnScanStage1" onclick="scanStageDirect(1, event)"
+                  title="Scan Stage 1">
+                  <span class="scan-laser-icon">⚡</span>
+                  <span class="scan-btn-text">Scan</span>
+                </button>
+                <span class="status-pill blue" id="p1StatusBadge">Ready</span>
+              </div>
+            </div>
+            <div class="stage-canvas-wrapper">
+              <img id="imgStage1" class="stage-preview-img" alt="Original Image" src="/images/image.png" loading="eager"
+                decoding="async">
+              <div class="live-scan-laser"></div>
+              <div class="live-scan-grid"></div>
+              <div class="hud-scan-status" id="hudStatusStage1">
+                <span class="hud-pulse-dot"></span>
+                <span class="hud-status-text">INGESTING SENSOR...</span>
+              </div>
+              <div class="canvas-overlay-watermark">STAGE 1: SOURCE PHOTOGRAPH</div>
+            </div>
+            <div class="meta-strip">
+              <div class="meta-item"><span class="meta-k">FILE:</span> <span class="meta-v"
+                  id="metaFilename">image.png</span></div>
+              <div class="meta-item"><span class="meta-k">RESOLUTION:</span> <span class="meta-v"
+                  id="metaResolution">1920 × 1080</span></div>
+              <div class="meta-item"><span class="meta-k">FORMAT:</span> <span class="meta-v" id="metaFormat">PNG</span>
+              </div>
+              <div class="meta-item"><span class="meta-k">STATUS:</span> <span class="meta-v status-ok"
+                  id="metaStatus">Loaded</span></div>
+            </div>
+          </div>
+
+          <!-- Stage 2 Card -->
+          <div class="stage-card" id="cardStage2" onclick="openStageDetail(2)">
+            <div class="stage-card-header">
+              <div class="header-tag">
+                <span class="tag-num">2</span>
+                <span class="tag-title" id="cardTitleStage2">DETECTING INFRASTRUCTURE</span>
+              </div>
+              <div class="header-actions">
+                <button class="btn-stage-scan" id="btnScanStage2" onclick="scanStageDirect(2, event)"
+                  title="Scan Stage 2">
+                  <span class="scan-laser-icon">⚡</span>
+                  <span class="scan-btn-text">Scan</span>
+                </button>
+                <span class="status-pill blue" id="p2SceneConfBadge" style="display: none;"></span>
+              </div>
+            </div>
+            <div class="stage-canvas-wrapper">
+              <img id="imgStage2" class="stage-preview-img" alt="Scene Detection" src="/images/image.png"
+                loading="eager" decoding="async">
+              <div class="live-scan-laser"></div>
+              <div class="live-scan-grid"></div>
+              <div class="hud-scan-status" id="hudStatusStage2">
+                <span class="hud-pulse-dot"></span>
+                <span class="hud-status-text">SURFACE MAPPING...</span>
+              </div>
+              <div class="canvas-overlay-watermark blue">STAGE 2: BLUE SURFACE OVERLAY</div>
+            </div>
+            <div class="meta-strip">
+              <div class="meta-item"><span class="meta-k">INFRASTRUCTURE:</span> <span class="meta-v highlight-blue"
+                  id="metaSceneName">--</span></div>
+              <div class="meta-item"><span class="meta-k">CONFIDENCE:</span> <span class="meta-v"
+                  id="metaSceneConfidence">--</span></div>
+              <div class="meta-item"><span class="meta-k">SURFACE MASK:</span> <span class="meta-v"><span
+                    class="color-dot blue"></span> BLUE #1976D2</span></div>
+            </div>
+          </div>
+
+          <!-- Stage 3 Card -->
+          <div class="stage-card" id="cardStage3" onclick="openStageDetail(3)">
+            <div class="stage-card-header">
+              <div class="header-tag">
+                <span class="tag-num">3</span>
+                <span class="tag-title" id="cardTitleStage3">DETECTING DEFECTS</span>
+              </div>
+              <div class="header-actions">
+                <button class="btn-stage-scan" id="btnScanStage3" onclick="scanStageDirect(3, event)"
+                  title="Scan Stage 3">
+                  <span class="scan-laser-icon">⚡</span>
+                  <span class="scan-btn-text">Scan</span>
+                </button>
+                <span class="status-pill red" id="p3DefectCountBadge">Multi-Instance</span>
+              </div>
+            </div>
+            <div class="stage-canvas-wrapper">
+              <img id="imgStage3" class="stage-preview-img" alt="Defect Bounding Boxes" src="/images/image.png"
+                loading="eager" decoding="async">
+              <div class="live-scan-laser"></div>
+              <div class="live-scan-grid"></div>
+              <div class="hud-scan-status" id="hudStatusStage3">
+                <span class="hud-pulse-dot"></span>
+                <span class="hud-status-text">DEFECT LOCALIZATION...</span>
+              </div>
+              <div class="canvas-overlay-watermark red">STAGE 3: GROUNDING DINO DETECTIONS</div>
+            </div>
+            <div class="meta-strip">
+              <div class="meta-item"><span class="meta-k">PRIMARY TYPE:</span> <span class="meta-v highlight-red"
+                  id="metaDefectType">Potholes & Cracks</span></div>
+              <div class="meta-item"><span class="meta-k">TOTAL DETECTED:</span> <span class="meta-v"
+                  id="metaTotalDefects">4</span></div>
+              <div class="meta-item"><span class="meta-k">BOXES:</span> <span class="meta-v"><span
+                    class="color-dot red"></span> RED (Damage) <span class="color-dot yellow"></span> YELLOW
+                  (Cracks)</span></div>
+            </div>
+          </div>
+
+          <!-- Stage 4 Card -->
+          <div class="stage-card" id="cardStage4" onclick="openStageDetail(4)">
+            <div class="stage-card-header">
+              <div class="header-tag">
+                <span class="tag-num">4</span>
+                <span class="tag-title" id="cardTitleStage4">SEGMENTING DEFECTS</span>
+              </div>
+              <div class="header-actions">
+                <button class="btn-stage-scan" id="btnScanStage4" onclick="scanStageDirect(4, event)"
+                  title="Scan Stage 4">
+                  <span class="scan-laser-icon">⚡</span>
+                  <span class="scan-btn-text">Scan</span>
+                </button>
+                <span class="status-pill red" id="p4SegmentBadge">SAM 2.1 Active</span>
+              </div>
+            </div>
+            <div class="stage-canvas-wrapper">
+              <img id="imgStage4" class="stage-preview-img" alt="SAM 2 Segmentation Masks" src="/images/image.png"
+                loading="eager" decoding="async">
+              <div class="live-scan-laser"></div>
+              <div class="live-scan-grid"></div>
+              <div class="hud-scan-status" id="hudStatusStage4">
+                <span class="hud-pulse-dot"></span>
+                <span class="hud-status-text">CONTOUR SEGMENTATION...</span>
+              </div>
+              <div class="canvas-overlay-watermark red">STAGE 4: SAM 2.1 CONTOUR MASKS</div>
+            </div>
+            <div class="meta-strip">
+              <div class="meta-item"><span class="meta-k">SEGMENTED:</span> <span class="meta-v"
+                  id="metaSegmentedCount">All Instances</span></div>
+              <div class="meta-item"><span class="meta-k">MASK PIXELS:</span> <span class="meta-v"
+                  id="metaTotalMaskPx">4,820 px</span></div>
+              <div class="meta-item"><span class="meta-k">MASKS:</span> <span class="meta-v"><span
+                    class="color-dot red"></span> RED / <span class="color-dot yellow"></span> YELLOW</span></div>
+            </div>
+          </div>
+
+          <!-- Stage 5 Card (Directly Below Stage 3 - Matching User Request) -->
+          <div class="stage-card" id="cardStage5" onclick="openStageDetail(5)">
+            <div class="stage-card-header">
+              <div class="header-tag">
+                <span class="tag-num">5</span>
+                <span class="tag-title">ANALYZING SURROUNDINGS</span>
+              </div>
+              <div class="header-actions">
+                <button class="btn-stage-scan" id="btnScanStage5" onclick="scanStageDirect(5, event)"
+                  title="Scan Stage 5">
+                  <span class="scan-laser-icon">⚡</span>
+                  <span class="scan-btn-text">Scan</span>
+                </button>
+                <span class="status-pill yellow" id="p5SurroundBadge">Dynamic Zone</span>
+              </div>
+            </div>
+            <div class="stage-canvas-wrapper">
+              <img id="imgStage5" class="stage-preview-img" alt="Surrounding Analysis" src="/images/image.png"
+                loading="eager" decoding="async">
+              <div class="live-scan-laser"></div>
+              <div class="live-scan-grid"></div>
+              <div class="hud-scan-status" id="hudStatusStage5">
+                <span class="hud-pulse-dot"></span>
+                <span class="hud-status-text">SURROUNDINGS SCAN...</span>
+              </div>
+              <div class="canvas-overlay-watermark yellow">STAGE 5: YELLOW ZONE & CYAN WATER</div>
+            </div>
+            <div class="meta-strip">
+              <div class="meta-item"><span class="meta-k">INSPECTION AREA:</span> <span class="meta-v highlight-yellow"
+                  id="metaZoneRadius">~3.2m Radius (Estimated Zone)</span></div>
+              <div class="meta-item"><span class="meta-k">CRACKS:</span> <span class="meta-v"
+                  id="metaCracksStatus">Detected</span></div>
+              <div class="meta-item"><span class="meta-k">WATER / DRAINAGE:</span> <span class="meta-v"
+                  id="metaWaterStatus">Detected</span></div>
+            </div>
+          </div>
+
+          <!-- Stage 6 Card (Directly Below Stage 4 - Matching User Request) -->
+          <div class="stage-card" id="cardStage6" onclick="openStageDetail(6)">
+            <div class="stage-card-header">
+              <div class="header-tag">
+                <span class="tag-num">6</span>
+                <span class="tag-title">CALCULATING MEASUREMENTS</span>
+              </div>
+              <div class="header-actions">
+                <button class="btn-stage-scan" id="btnScanStage6" onclick="scanStageDirect(6, event)"
+                  title="Scan Stage 6">
+                  <span class="scan-laser-icon">⚡</span>
+                  <span class="scan-btn-text">Scan</span>
+                </button>
+                <span class="status-pill green" id="p6MeasureBadge">Green Crosshairs</span>
+              </div>
+            </div>
+            <div class="stage-canvas-wrapper">
+              <img id="imgStage6" class="stage-preview-img" alt="Measurements Graphics" src="/images/image.png"
+                loading="eager" decoding="async">
+              <div class="live-scan-laser"></div>
+              <div class="live-scan-grid"></div>
+              <div class="hud-scan-status" id="hudStatusStage6">
+                <span class="hud-pulse-dot"></span>
+                <span class="hud-status-text">CROSSHAIR METRICS...</span>
+              </div>
+              <div class="canvas-overlay-watermark green">STAGE 6: GREEN DIMENSION CROSSHAIRS</div>
+            </div>
+            <div class="meta-strip">
+              <div class="meta-item"><span class="meta-k">SCALE:</span> <span class="meta-v highlight-green">IMAGE-BASED
+                  ESTIMATE</span></div>
+              <div class="meta-item"><span class="meta-k">PRIMARY LENGTH:</span> <span class="meta-v"
+                  id="metaPrimaryLength">1.21 m</span></div>
+              <div class="meta-item"><span class="meta-k">PRIMARY WIDTH:</span> <span class="meta-v"
+                  id="metaPrimaryWidth">0.46 m</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= PAGE 2: STAGE 7 & 8 + MASTER VIEW ================= -->
+      <div id="page2Container" class="inspection-page">
+        <div class="page-header-row">
+          <div class="page-title-group">
+            <h2 class="page-title">RADIOTHERMAL ANALYSIS & MASTER COMPOSITE OVERLAY</h2>
+            <p class="page-desc">Stages 7 & 8: AI-Inferred radiothermal anomaly mapping, environmental context, and
+              master computer vision synthesis.</p>
+          </div>
+          <div class="page-controls">
+            <button class="btn btn-secondary btn-sm" onclick="switchPage(1)">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+              <span>Back: Stages 1–6</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="stage-single-row">
+          <!-- Stage 7 Card: AI-Inferred Radiothermal Analysis -->
+          <div class="stage-card full-span-card" id="cardStage7" onclick="openStageDetail(7)">
+            <div class="stage-card-header">
+              <div class="header-tag">
+                <span class="tag-num">7</span>
+                <span class="tag-title">RADIOTHERMAL ANALYSIS (AI-INFERRED FROM RGB)</span>
+              </div>
+              <div class="header-actions">
+                <button class="btn-stage-scan" id="btnScanStage7" onclick="scanStageDirect(7, event)"
+                  title="Scan Stage 7">
+                  <span class="scan-laser-icon">⚡</span>
+                  <span class="scan-btn-text">Scan</span>
+                </button>
+                <span class="status-pill orange" id="p7ThermalBadge">RGB Inferred</span>
+              </div>
+            </div>
+            <div class="stage-canvas-wrapper">
+              <img id="imgStage7" class="stage-preview-img" alt="AI-Inferred Radiothermal Anomaly Map"
+                src="/images/image.png" loading="eager" decoding="async">
+              <div class="live-scan-laser"></div>
+              <div class="live-scan-grid"></div>
+              <div class="hud-scan-status" id="hudStatusStage7">
+                <span class="hud-pulse-dot"></span>
+                <span class="hud-status-text">THERMAL INFERENCE...</span>
+              </div>
+              <div class="canvas-overlay-watermark orange">STAGE 7: AI-INFERRED THERMAL ANOMALY</div>
+            </div>
+            <div class="meta-strip">
+              <div class="meta-item"><span class="meta-k">ANOMALY STATUS:</span> <span class="meta-v highlight-orange"
+                  id="metaThermalStatus">Elevated Anomaly</span></div>
+              <div class="meta-item"><span class="meta-k">HIGH ANOMALY %:</span> <span class="meta-v"
+                  id="metaThermalHighPct">--</span></div>
+              <div class="meta-item"><span class="meta-k">THERMAL RISK:</span> <span class="meta-v highlight-red"
+                  id="metaThermalRisk">HIGH</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1. AI-INFERRED RADIOTHERMAL ANALYSIS (FROM RGB) - Directly below Stage 7 -->
+        <div class="dashboard-panel-card full-span-card" id="cardRadiothermalAnalysis">
+          <div class="dpc-header">
+            <span class="dpc-title">AI-INFERRED RADIOTHERMAL ANALYSIS (FROM RGB)</span>
+            <span class="dpc-badge warning">AI-INFERRED — RGB BASED</span>
+          </div>
+          <div class="dpc-thermal-layout">
+            <!-- Left: Thermal Image with Scale Bar -->
+            <div class="thermal-visual-col">
+              <div class="dpc-thermal-img-wrap">
+                <img id="dpcThermalImg"
+                  src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25'%3E%3Crect fill='%23111922'/%3E%3C/svg%3E"
+                  alt="Radiothermal Heatmap">
+                <!-- Vertical Scale Bar -->
+                <div class="vertical-scale-bar-wrap">
+                  <span class="v-scale-label top">High<br>Anomaly</span>
+                  <div class="v-scale-gradient"></div>
+                  <span class="v-scale-label btm">Low<br>Anomaly</span>
+                </div>
+              </div>
+              <div class="thermal-image-subtext">
+                AI-inferred radiothermal anomalies from RGB image.<br>
+                Not a real thermal camera measurement.
+              </div>
+            </div>
+
+            <!-- Right: ANOMALY INTERPRETATION Card -->
+            <div class="thermal-interp-col">
+              <div class="interp-card-header">ANOMALY INTERPRETATION</div>
+              <div class="interp-card-list" id="dpcAnomalyInterpList">
+                <!-- Injected dynamically -->
+              </div>
+              <div class="interp-legend-bar">
+                <div class="il-item"><span class="il-swatch high"></span> High</div>
+                <div class="il-item"><span class="il-swatch medium"></span> Medium</div>
+                <div class="il-item"><span class="il-swatch low"></span> Low</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- Stage 8 Master Visual Overlay (Large Hero Panel) -->
+        <div class="master-analysis-card" id="cardStage8" onclick="openStageDetail(8)">
+          <div class="master-header">
+            <div class="master-header-left">
+              <span class="stage-badge-large">STAGE 8</span>
+              <div class="master-titles">
+                <h3 class="master-title">FINAL AI ANALYSIS RESULT (MASTER VISUAL OVERLAY)</h3>
+                <span class="master-subtitle">Composite computer vision overlay synthesized across all 8 inspection
+                  stages</span>
+              </div>
+              <button class="btn-stage-scan" id="btnScanStage8" onclick="scanStageDirect(8, event)" title="Scan Stage 8"
+                style="margin-left: 12px;">
+                <span class="scan-laser-icon">⚡</span>
+                <span class="scan-btn-text">Scan Stage 8</span>
+              </button>
+            </div>
+
+            <!-- Layer Visibility Toggles -->
+            <div class="layer-toggles">
+              <span class="toggle-label">Active Layers:</span>
+              <button class="layer-chip active" id="layerRoad" onclick="toggleLayer('road', event)">
+                <span class="color-dot blue"></span> Surface
+              </button>
+              <button class="layer-chip active" id="layerDefects" onclick="toggleLayer('defects', event)">
+                <span class="color-dot red"></span> Damage
+              </button>
+              <button class="layer-chip active" id="layerBoxes" onclick="toggleLayer('boxes', event)">
+                <span class="color-dot red-outline"></span> Boxes
+              </button>
+              <button class="layer-chip active" id="layerCracks" onclick="toggleLayer('cracks', event)">
+                <span class="color-dot yellow"></span> Cracks
+              </button>
+              <button class="layer-chip active" id="layerWater" onclick="toggleLayer('water', event)">
+                <span class="color-dot cyan"></span> Water
+              </button>
+              <button class="layer-chip active" id="layerZone" onclick="toggleLayer('zone', event)">
+                <span class="color-dot yellow-dashed"></span> Dynamic Zone
+              </button>
+              <button class="layer-chip active" id="layerMeasures" onclick="toggleLayer('measures', event)">
+                <span class="color-dot green"></span> Metrics
+              </button>
+              <button class="layer-chip" id="layerThermal" onclick="toggleLayer('thermal', event)">
+                <span class="color-dot orange"></span> 🔥 Inferred Thermal
+              </button>
+            </div>
+          </div>
+
+          <div class="master-canvas-container">
+            <img id="imgStage8" class="master-composite-img" alt="Final AI Analysis Result" src="/images/image.png"
+              loading="eager" decoding="async">
+            <div class="live-scan-laser"></div>
+            <div class="live-scan-grid"></div>
+            <div class="hud-scan-status" id="hudStatusStage8">
+              <span class="hud-pulse-dot"></span>
+              <span class="hud-status-text">SYNTHESIZING REPORT...</span>
+            </div>
+
+            <!-- Interactive Floating Legend with Exact Colors -->
+            <div class="floating-legend" id="stage8Legend">
+              <div class="legend-header">COLOR CODE LEGEND</div>
+              <div class="legend-item" id="legendItemDefects">
+                <span class="legend-box red"></span>
+                <span class="legend-text">RED: Potholes / Damage / Spalling</span>
+              </div>
+              <div class="legend-item" id="legendItemCracks">
+                <span class="legend-box yellow"></span>
+                <span class="legend-text">YELLOW: Cracks & Fissures</span>
+              </div>
+              <div class="legend-item" id="legendItemWater">
+                <span class="legend-box cyan"></span>
+                <span class="legend-text">CYAN: Water / Moisture / Drainage</span>
+              </div>
+              <div class="legend-item" id="legendItemRoad">
+                <span class="legend-box blue"></span>
+                <span class="legend-text">BLUE: Infrastructure Surface</span>
+              </div>
+              <div class="legend-item" id="legendItemMeasures">
+                <span class="legend-box green"></span>
+                <span class="legend-text">GREEN: Measurement Crosshairs</span>
+              </div>
+              <div class="legend-item" id="legendItemThermal" style="display: none;">
+                <span class="legend-box orange"></span>
+                <span class="legend-text">THERMAL: Blue (Nominal) → Cyan (Moist) → Yellow → Orange → Red
+                  (Anomaly)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 8. AI INSPECTION SUMMARY & RECOMMENDATIONS (COMBINED MASTER SYNTHESIS) -->
+        <div class="dashboard-panel-card full-span-card" id="cardAiSummary">
+          <div class="dpc-header">
+            <span class="dpc-title">8. AI INSPECTION SUMMARY</span>
+            <span class="dpc-badge danger" id="dpcSummaryBadge">HIGH RISK</span>
+          </div>
+          <div class="dpc-summary-body">
+            <!-- Top Metrics Row -->
+            <div class="summary-top-stats">
+              <div class="sts-item">
+                <span class="sts-k">INFRASTRUCTURE</span>
+                <span class="sts-v highlight-blue" id="dpcSummaryInfra">Bridge</span>
+              </div>
+              <div class="sts-item">
+                <span class="sts-k">TOTAL DETECTIONS</span>
+                <span class="sts-v" id="dpcSummaryTotalDet">9</span>
+              </div>
+              <div class="sts-item">
+                <span class="sts-k">CRITICAL DEFECTS</span>
+                <span class="sts-v highlight-red" id="dpcSummaryCritDet">8</span>
+              </div>
+              <div class="sts-item">
+                <span class="sts-k">OVERALL SEVERITY</span>
+                <span class="sts-v highlight-red" id="dpcSummarySev">HIGH</span>
+              </div>
+              <div class="sts-item">
+                <span class="sts-k">RISK LEVEL</span>
+                <span class="sts-v highlight-red" id="dpcSummaryRisk">CRITICAL</span>
+              </div>
+              <div class="sts-item gauge-item">
+                <span class="sts-k">OVERALL CONFIDENCE</span>
+                <div class="gauge-wrap">
+                  <svg class="radial-gauge" viewBox="0 0 36 36">
+                    <path class="gauge-bg"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    <path class="gauge-fill" id="dpcGaugeFill" stroke-dasharray="60, 100"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    <text x="18" y="20.35" class="gauge-text" id="dpcGaugeText">60%</text>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <!-- Executive Inspector Synthesis Paragraph -->
+            <div class="summary-synthesis-card">
+              <div class="synthesis-header">AI INSPECTION SUMMARY & RECOMMENDATIONS</div>
+              <p class="synthesis-text" id="dpcSummaryParagraph">
+                Multi-instance analysis identified 25 physical defect(s) on this Bridge. Located in Guntur, Andhra
+                Pradesh, India. Overall structural integrity risk is rated CRITICAL (HIGH Severity). Surrounding
+                evaluation: Cracks=Detected, Water=Detected, Surface Deterioration=Moderate to Severe. Action Priority:
+                Immediate (24-48h).
+              </p>
+            </div>
+
+            <!-- Two Column Breakdown -->
+            <div class="summary-lists-grid">
+              <!-- Key Findings -->
+              <div class="sl-column">
+                <div class="sl-title">KEY FINDINGS</div>
+                <ul class="sl-list" id="dpcKeyFindingsList">
+                  <!-- Injected dynamically with checkmark icons -->
+                </ul>
+              </div>
+
+              <!-- Recommendations -->
+              <div class="sl-column">
+                <div class="sl-title">RECOMMENDATIONS</div>
+                <ul class="sl-list" id="dpcRecommendationsList">
+                  <!-- Injected dynamically with bullet points -->
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Page 2 Bottom Navigation Bar -->
+        <div class="page-bottom-nav">
+          <button class="btn btn-secondary" onclick="switchPage(1)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12 19 5 12 12 5" />
+            </svg>
+            <span>Back: Stages 1–6</span>
+          </button>
+          <div class="nav-info">
+            <span>Inspection complete across all 8 stages. Click on any preview to open stage telemetry.</span>
+          </div>
+          <button class="btn btn-primary" onclick="openReportModal()">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+              <path d="M6 14h12v8H6z" />
+            </svg>
+            <span>Generate Full Inspection Report</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Side Diagnostic Panels Column -->
+    <aside class="sidebar-column">
+
+      <!-- Panel 7: RADIOTHERMAL ANALYSIS (STAGE 7) - Appears at TOP when active -->
+      <div class="sidebar-card" id="cardThermalSidebar" style="display: none;">
+        <div class="sidebar-card-header">
+          <span class="panel-title">7. RADIOTHERMAL ANALYSIS</span>
+          <span class="panel-badge-count" id="panelThermalBadge">RGB-INFERRED</span>
+        </div>
+
+        <div class="surround-table" id="thermalTableContainer">
+          <div class="surround-row">
+            <span class="s-label">High Anomaly Thermal Area</span>
+            <span class="s-val highlight-red" id="stHighPct">--</span>
+          </div>
+          <div class="surround-row">
+            <span class="s-label">Moderate Thermal Area</span>
+            <span class="s-val highlight-yellow" id="stModPct">--</span>
+          </div>
+          <div class="surround-row">
+            <span class="s-label">Nominal Substrate Area</span>
+            <span class="s-val highlight-green" id="stNominalPct">--</span>
+          </div>
+          <div class="surround-row">
+            <span class="s-label">Inferred Thermal Risk</span>
+            <span class="s-val highlight-red" id="stRiskLevel">--</span>
+          </div>
+          <div class="surround-row">
+            <span class="s-label">Thermal Correlation Status</span>
+            <span class="s-val cyan-detected" id="stMoistureStatus">--</span>
+          </div>
+        </div>
+
+        <div class="defects-instance-list-header" style="margin-top: 8px;">
+          <span>DETECTED THERMAL ANOMALIES:</span>
+        </div>
+        <div class="defects-instance-list" id="thermalPatternsList">
+          <!-- Dynamically populated from Stage 7 scan -->
+        </div>
+
+        <div class="scale-disclaimer" style="margin-top: 6px;">
+          Note: AI-inferred radiothermal anomalies from RGB image. Not a physical radiometric FLIR measurement.
+        </div>
+      </div>
+
+      <!-- Panel 8: OSINT CONTEXT (Directly underneath 7. RADIOTHERMAL ANALYSIS in Right Sidebar) -->
+      <div class="sidebar-card osint-sidebar-card" id="cardOsintContext" style="display: none;">
+        <div class="sidebar-card-header osint-sb-header">
+          <span class="panel-title" id="osintHeaderTitle">8. OSINT CONTEXT (ARUNDELPET, AN)</span>
+          <span class="osint-coords-pill" id="osintCoordsBadge" title="Inspection Location Coordinates">
+            <span class="pill-pin">📍</span> <span id="osintCoordsText">16.3067° N, 80.4365° E</span>
+          </span>
+        </div>
+        <div class="osint-default-tag" id="osintDefaultTag">Default Test Location (GPS fallback)</div>
+
+        <div class="osint-sidebar-scroll-body">
+          <!-- 1. Weather (Today) -->
+          <div class="osint-sb-section weather-sb-box">
+            <div class="osint-sb-section-title">WEATHER (TODAY)</div>
+            <div class="weather-sb-content">
+              <span class="weather-sb-icon">⛅</span>
+              <div class="weather-sb-info">
+                <div class="weather-sb-line">Temp: <strong id="osintTemp">25°C - 35°C</strong></div>
+                <div class="weather-sb-line">Humidity: <strong id="osintHumidity">48%</strong></div>
+                <div class="weather-sb-line">Condition: <strong id="osintCondition">Mainly Clear</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Recent Rainfall (Last 7 Days) -->
+          <div class="osint-sb-section rainfall-sb-box">
+            <div class="osint-sb-section-title">RECENT RAINFALL (LAST 7 DAYS)</div>
+            <div class="rainfall-sb-content">
+              <span class="rainfall-sb-icon">🌧️</span>
+              <div class="rainfall-sb-info">
+                <div class="rainfall-sb-amount" id="osintRainAmount">27.9 mm</div>
+                <div class="rainfall-sb-badge" id="osintRainIntensity">Moderate (15–50 mm)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Location Map -->
+          <div class="osint-sb-section map-sb-box">
+            <div class="osint-sb-section-title">LOCATION MAP</div>
+            <div class="map-sb-wrapper" id="osintMapWrapper">
+              <div id="osintMiniMap" class="osint-sb-map"></div>
+              <div class="map-live-pin" title="Location Pin">
+                <span class="pin-pulse"></span>
+                <span class="pin-icon">📍</span>
+              </div>
+              <button type="button" class="map-osm-pill-btn" onclick="openInteractiveMap()"
+                title="Open Full Street & Satellite Map">
+                <span>📍 Open Street Map</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 4. Area / Infrastructure Context -->
+          <div class="osint-sb-section area-infra-sb-box">
+            <div class="area-infra-sb-col">
+              <span class="area-infra-sb-icon">🏛️</span>
+              <div class="area-infra-sb-text">
+                <span class="area-infra-sb-label">Area Type</span>
+                <strong class="area-infra-sb-val" id="osintAreaType">Urban Area</strong>
+              </div>
+            </div>
+            <div class="area-infra-sb-col">
+              <span class="area-infra-sb-icon">🌉</span>
+              <div class="area-infra-sb-text">
+                <span class="area-infra-sb-label">Nearby Infrastructure</span>
+                <strong class="area-infra-sb-val" id="osintNearbyInfra">SH288, Surrounding Structures</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Area Context -->
+          <div class="osint-sb-section area-context-sb-box">
+            <div class="osint-sb-section-title">AREA CONTEXT</div>
+            <div class="area-context-sb-list">
+              <div class="ac-sb-row">
+                <div class="ac-sb-left">
+                  <span class="ac-sb-icon">🏛️</span>
+                  <span id="acAreaDesc">Urban Area</span>
+                </div>
+                <span class="ac-sb-status-badge cyan" id="badgeAcArea">INFO</span>
+              </div>
+              <div class="ac-sb-row">
+                <div class="ac-sb-left">
+                  <span class="ac-sb-icon">⚙️</span>
+                  <span>Nearby Drainage: <strong id="acDrainage">Present</strong></span>
+                </div>
+                <span class="ac-sb-status-badge green" id="badgeAcDrainage">OK</span>
+              </div>
+              <div class="ac-sb-row">
+                <div class="ac-sb-left">
+                  <span class="ac-sb-icon">🛣️</span>
+                  <span>Road Type: <strong id="acRoad">Asphalt / Paved Road</strong></span>
+                </div>
+                <span class="ac-sb-status-badge good" id="badgeAcRoad">GOOD</span>
+              </div>
+              <div class="ac-sb-row">
+                <div class="ac-sb-left">
+                  <span class="ac-sb-icon">🚗</span>
+                  <span>Traffic Load: <strong id="acTraffic">Heavy / High Volume</strong></span>
+                </div>
+                <span class="ac-sb-status-badge red" id="badgeAcTraffic">HIGH</span>
+              </div>
+              <div class="ac-sb-row">
+                <div class="ac-sb-left">
+                  <span class="ac-sb-icon">🌳</span>
+                  <span>Surrounding Vegetation: <strong id="acVeg">Moderate Vegetation</strong></span>
+                </div>
+                <span class="ac-sb-status-badge orange" id="badgeAcVeg">MODERATE</span>
+              </div>
+              <div class="ac-sb-row">
+                <div class="ac-sb-left">
+                  <span class="ac-sb-icon">💧</span>
+                  <span>Surface Condition: <strong id="acSurface">Wet / Surface Water</strong></span>
+                </div>
+                <span class="ac-sb-status-badge blue" id="badgeAcSurface">WET</span>
+              </div>
+            </div>
+            <div class="ac-sb-disclaimer">Note: Contextual information is for reference and may contain inaccuracies.
+              Context supports the possibility of moisture-related conditions.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 1: DETECTION RESULT (MULTI-INSTANCE) -->
+      <div class="sidebar-card" id="cardDetectionResult">
+        <div class="sidebar-card-header">
+          <span class="panel-title">DETECTION RESULT</span>
+          <span class="panel-badge-count" id="panelDefectCount" style="display: none;">--</span>
+        </div>
+
+        <div class="result-summary-grid">
+          <div class="summary-cell">
+            <span class="cell-label">INFRASTRUCTURE</span>
+            <span class="cell-val bold highlight-blue" id="panelInfraType">--</span>
+          </div>
+          <div class="summary-cell">
+            <span class="cell-label">TOTAL DEFECTS</span>
+            <span class="cell-val bold highlight-red" id="panelTotalDefects">--</span>
+          </div>
+          <div class="summary-cell">
+            <span class="cell-label">SEVERITY</span>
+            <span class="severity-badge-pill" id="panelSeverity">--</span>
+          </div>
+          <div class="summary-cell">
+            <span class="cell-label">RISK LEVEL</span>
+            <span class="priority-badge-pill" id="panelPriority">--</span>
+          </div>
+        </div>
+
+        <div class="defects-instance-list-header">
+          <span>DETECTED INSTANCES:</span>
+        </div>
+        <div class="defects-instance-list" id="defectsInstanceList">
+          <div
+            style="padding:14px 8px; color:var(--text-muted); font-size:10.5px; font-family:var(--font-mono); text-align:center; opacity:0.7;">
+            Awaiting Stage 3 Scan...</div>
+        </div>
+      </div>
+
+      <!-- Panel 2: SURROUNDING ANALYSIS -->
+      <div class="sidebar-card" id="cardSurroundingsSidebar">
+        <div class="sidebar-card-header">
+          <span class="panel-title">SURROUNDING ANOMALIES</span>
+        </div>
+
+        <div class="surround-table" id="surroundTableContainer">
+          <div class="surround-row">
+            <span class="s-label">Visible Cracks / Fissures</span>
+            <span class="s-val" id="sCracks">--</span>
+          </div>
+          <div class="surround-row">
+            <span class="s-label">Water Accumulation / Drainage</span>
+            <span class="s-val" id="sWater">--</span>
+          </div>
+          <div class="surround-row">
+            <span class="s-label">Surface Deterioration Rating</span>
+            <span class="s-val" id="sDeterioration">--</span>
+          </div>
+          <div class="surround-row">
+            <span class="s-label">Additional Visible Defects</span>
+            <span class="s-val" id="sAddDefects">--</span>
+          </div>
+          <div class="surround-row">
+            <span class="s-label">Inspection Zone Radius</span>
+            <span class="s-val" id="sInspectionZone">--</span>
+          </div>
+          <div class="surround-row">
+            <span class="s-label">Surrounding Hazards</span>
+            <span class="s-val" id="sSurroundingHazards">--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 3: MEASUREMENTS PANEL (PER DEFECT) -->
+      <div class="sidebar-card" id="cardMeasurementsSidebar">
+        <div class="sidebar-card-header">
+          <span class="panel-title">MEASUREMENTS (APPROXIMATE)</span>
+          <span class="scale-note-tag">Image-Based Estimate</span>
+        </div>
+
+        <div class="measurements-list" id="measurementsListContainer">
+          <div
+            style="padding:14px 8px; color:var(--text-muted); font-size:10.5px; font-family:var(--font-mono); text-align:center; opacity:0.7;">
+            Awaiting Stage 6 Scan...</div>
+        </div>
+
+        <div class="zone-measure-row">
+          <span class="zm-label">Inspection Zone:</span>
+          <span class="zm-val highlight-yellow" id="mInspectionZone">--</span>
+        </div>
+        <div class="scale-disclaimer">
+          Note: Ground perspective calibrated estimate. Physical calibration marker required for certified legal survey
+          accuracy.
+        </div>
+      </div>
+
+    </aside>
+  </main>
+
+  <!-- ================= DEDICATED STAGE DETAIL VIEW (75% LEFT + 25% RIGHT) ================= -->
+  <div class="stage-detail-overlay" id="stageDetailOverlay" style="display: none;">
+    <div class="detail-header-bar">
+      <div class="dh-left">
+        <button class="btn btn-secondary btn-back" onclick="closeStageDetail()">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          <span>BACK</span>
+        </button>
+        <div class="dh-title-group">
+          <span class="dh-stage-num" id="dhStageNum">STAGE 1</span>
+          <span class="dh-stage-sep">—</span>
+          <h2 class="dh-stage-title" id="dhStageTitle">IMAGE LOADED</h2>
+        </div>
+      </div>
+
+      <!-- Quick Stage Switcher Tabs (1 to 8) -->
+      <div class="dh-stage-tabs">
+        <button class="tab-btn active" id="tabStage1" onclick="openStageDetail(1)">1. Image</button>
+        <button class="tab-btn" id="tabStage2" onclick="openStageDetail(2)">2. Infrastructure</button>
+        <button class="tab-btn" id="tabStage3" onclick="openStageDetail(3)">3. Defects</button>
+        <button class="tab-btn" id="tabStage4" onclick="openStageDetail(4)">4. Segmenting</button>
+        <button class="tab-btn" id="tabStage5" onclick="openStageDetail(5)">5. Surroundings</button>
+        <button class="tab-btn" id="tabStage6" onclick="openStageDetail(6)">6. Measurements</button>
+        <button class="tab-btn" id="tabStage7" onclick="openStageDetail(7)">7. Radiothermal</button>
+        <button class="tab-btn" id="tabStage8" onclick="openStageDetail(8)">8. Result</button>
+      </div>
+    </div>
+
+    <!-- 75% LEFT + 25% RIGHT Split View (Resizable & Zoomable) -->
+    <div class="detail-split-container" id="detailSplitContainer">
+      <!-- 1. LEFT PANE: ACTUAL STAGE IMAGE (Zoomable, Pannable, 1-inch border) -->
+      <div class="detail-left-75" id="detailLeftPane">
+        <div class="stage-image-container" id="stageImageContainer">
+          <img id="detailStageImage" src="" alt="Actual Stage Image" draggable="false">
+
+          <!-- Floating Interactive Zoom / Pan Controls -->
+          <div class="image-zoom-toolbar">
+            <button class="zoom-btn" onclick="zoomStageImage(0.25)" title="Zoom In">+</button>
+            <span class="zoom-level-badge" id="zoomLevelBadge">100%</span>
+            <button class="zoom-btn" onclick="zoomStageImage(-0.25)" title="Zoom Out">−</button>
+            <button class="zoom-btn reset-btn" onclick="resetStageImageZoom()" title="Reset View">↺ Fit</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. DRAGGABLE SPLIT RESIZER GUTTER (Adjustable Left to Right) -->
+      <div class="detail-resizer-gutter" id="detailResizerGutter" title="Drag to adjust split view width">
+        <div class="gutter-handle"></div>
+      </div>
+
+      <!-- 3. RIGHT PANE: STRUCTURED STAGE TELEMETRY -->
+      <div class="detail-right-25" id="detailRightPane">
+        <!-- Top Stage Structured Breakdown (Full Height Scrollable) -->
+        <div class="stage-summary-cards-container" id="detailStageSummaryCards">
+          <!-- Populated with Stage Overview + Metadata/Classification Grids -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full Inspection Report Modal -->
+  <div class="modal-backdrop" id="reportModal">
+    <div class="report-dialog">
+      <div class="dialog-header">
+        <div class="dialog-header-left">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+          <h2>INFRASTRUCTURE VISUAL INSPECTION REPORT</h2>
+        </div>
+        <div class="dialog-actions">
+          <button class="btn btn-primary btn-sm" onclick="window.print()">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 6 2 18 2 18 9" />
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+              <rect x="6" y="14" width="12" height="8" />
+            </svg>
+            <span>Print Report</span>
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="downloadJSONReport()">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+            </svg>
+            <span>Download JSON</span>
+          </button>
+          <button class="btn btn-ghost btn-sm close-modal-btn" onclick="closeReportModal()">✕</button>
+        </div>
+      </div>
+
+      <div class="report-body" id="printableReportBody">
+        <div class="report-header-box">
+          <div class="rh-row">
+            <div><strong>REPORT ID:</strong> <span id="repId">INSP-2026-0822-01</span></div>
+            <div><strong>DATE & TIME:</strong> <span id="repDate">2026-08-22 22:40</span></div>
+            <div><strong>AI AGENT:</strong> <span>Grounding DINO Swin-T + SAM 2.1 + Radiothermal Vision</span></div>
+          </div>
+          <div class="rh-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08);">
+            <div><strong>LOCATION:</strong> <span id="repLocName">Guntur, Andhra Pradesh, India</span></div>
+            <div><strong>LOCATION SOURCE:</strong> <span id="repLocSource" class="highlight-cyan">Live GPS /
+                Geolocation</span></div>
+            <div><strong>COORDINATES:</strong> <span id="repLocCoords">16.3067° N, 80.4365° E</span></div>
+          </div>
+        </div>
+
+        <div class="report-hero-image">
+          <img id="repMasterImg" src="" alt="Master Inspection Result">
+        </div>
+
+        <!-- Section 1: Executive Summary & Location Context -->
+        <div class="report-section">
+          <h3>1. EXECUTIVE SUMMARY & INFRASTRUCTURE IDENTIFICATION</h3>
+          <div class="rep-grid-3">
+            <div class="rep-stat-box">
+              <span class="rs-label">INFRASTRUCTURE CATEGORY</span>
+              <span class="rs-val highlight-blue" id="repScene">Road / Pavement</span>
+            </div>
+            <div class="rep-stat-box">
+              <span class="rs-label">SEVERITY RATING</span>
+              <span class="rs-val highlight-red" id="repSeverity">HIGH</span>
+            </div>
+            <div class="rep-stat-box">
+              <span class="rs-label">ASSESSED RISK</span>
+              <span class="rs-val highlight-red" id="repPriority">ELEVATED</span>
+            </div>
+          </div>
+
+          <div class="location-context-rep-box" id="repLocContextBox">
+            <h4 style="margin: 0 0 6px 0; font-size: 11px; text-transform: uppercase; color: var(--accent-cyan);">
+              LOCATION & ENVIRONMENTAL CONTEXT (OSINT)</h4>
+            <p id="repLocContextText"
+              style="margin: 0; font-size: 12px; line-height: 1.5; color: var(--text-secondary);">
+              Context: Krishna River alluvial basin & eastern coastal plains. Seasonal ambient heat (25°C–40°C) with
+              monsoonal precipitation cycles contributing to thermal expansion stress.
+            </p>
+          </div>
+        </div>
+
+        <!-- Section 2: AI-Inferred Radiothermal & Moisture Anomaly Map -->
+        <div class="report-section">
+          <h3>2. AI-INFERRED RADIOTHERMAL & MOISTURE ANOMALY ANALYSIS</h3>
+          <div class="rep-thermal-grid">
+            <div class="rep-thermal-img-wrapper">
+              <img id="repThermalImg" src="" alt="AI-Inferred Thermal Anomaly Map"
+                style="width: 100%; border-radius: 6px; border: 1px solid var(--border-color);">
+            </div>
+            <div class="rep-thermal-info">
+              <div class="rep-stat-box" style="margin-bottom: 8px;">
+                <span class="rs-label">THERMAL ANOMALY STATUS</span>
+                <span class="rs-val highlight-orange" id="repThermalStatus">Elevated moisture / cavity anomaly
+                  detected</span>
+              </div>
+              <div class="thermal-scale-bar"
+                style="background: linear-gradient(90deg, #002288, #00E5FF, #FFD600, #FF8800, #FF0033); height: 12px; border-radius: 3px; margin: 8px 0;">
+              </div>
+              <div
+                style="display: flex; justify-content: space-between; font-size: 9px; color: var(--text-muted); text-transform: uppercase;">
+                <span>Blue: Nominal</span>
+                <span>Cyan: Moisture</span>
+                <span>Yellow: Moderate</span>
+                <span>Orange: Sig</span>
+                <span>Red: Critical</span>
+              </div>
+              <p style="margin: 10px 0 0 0; font-size: 11px; color: var(--text-secondary); line-height: 1.4;">
+                <strong>RGB Visual Estimation:</strong> Evaluates moisture absorption textures, reflectance drop, and
+                cavity depth gradients from the RGB photograph. <em>Not a physical thermal-camera measurement. Zero
+                  fabricated temperatures.</em>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Multi-Instance Defects Table -->
+        <div class="report-section">
+          <h3>3. MULTI-INSTANCE DEFECTS & MEASUREMENTS TABLE</h3>
+          <table class="rep-table" id="repDefectsTable">
+            <thead>
+              <tr>
+                <th>Defect ID</th>
+                <th>Classification</th>
+                <th>Confidence</th>
+                <th>Tier</th>
+                <th>Visibility</th>
+                <th>Est. Length (m)</th>
+                <th>Est. Width (m)</th>
+                <th>Est. Area (m²)</th>
+              </tr>
+            </thead>
+            <tbody id="repTableBody">
+              <!-- Dynamically rendered -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Section 4: Surrounding Anomalies & Full Summary -->
+        <div class="report-section">
+          <h3>4. CONSOLIDATED AI SUMMARY & ACTIONABLE RECOMMENDATIONS</h3>
+          <div class="rep-grid-2" style="margin-bottom: 12px;">
+            <div class="rep-stat-box">
+              <span class="rs-label">CRACK PROPAGATION</span>
+              <span class="rs-val" id="repCracks">Detected</span>
+            </div>
+            <div class="rep-stat-box">
+              <span class="rs-label">WATER ACCUMULATION / DRAINAGE</span>
+              <span class="rs-val" id="repWater">Detected</span>
+            </div>
+          </div>
+          <div class="rep-summary-pre" id="repSummaryText"
+            style="white-space: pre-wrap; font-family: var(--font-mono); font-size: 11px; line-height: 1.6; background: rgba(0,0,0,0.3); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+          </div>
+        </div>
+
+        <!-- Section 5: Engineering & Legal Disclaimers -->
+        <div class="report-section"
+          style="border-top: 1px solid var(--border-color); padding-top: 14px; margin-top: 20px;">
+          <h4 style="margin: 0 0 6px 0; font-size: 11px; text-transform: uppercase; color: var(--text-muted);">LEGAL &
+            ENGINEERING DISCLAIMERS</h4>
+          <ul style="margin: 0; padding-left: 18px; font-size: 10px; color: var(--text-muted); line-height: 1.5;">
+            <li>AI-inferred thermal analysis from RGB imagery is an estimation and not equivalent to measurement from a
+              calibrated physical thermal camera.</li>
+            <li>Image-based dimensional measurements are approximate estimates based on perspective geometry. Certified
+              legal survey requires physical on-site reference markers.</li>
+            <li>This automated AI assessment is intended to augment human inspectors and does not replace qualified
+              professional engineering judgment or certified structural load calculations.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= INTERACTIVE FULLSCREEN LOCATION & STREET MAP MODAL ================= -->
+  <div class="interactive-map-modal" id="interactiveMapModal" style="display: none;">
+    <div class="map-modal-header">
+      <div class="mmh-left">
+        <button class="btn btn-secondary btn-back-map" onclick="closeInteractiveMap()">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          <span>Back to Inspection</span>
+        </button>
+        <div class="map-modal-title-wrap">
+          <span class="mmt-main" id="mapModalTitle">📍 Live Location Map: Guntur, Andhra Pradesh, India</span>
+          <span class="mmt-sub" id="mapModalSub">Interactive Map View • Zoom In/Out to Inspect Streets, Roads &
+            Surrounding Terrain</span>
+        </div>
+      </div>
+
+      <div class="mmh-right">
+        <!-- Layer Switcher: Satellite vs Street -->
+        <div class="map-layer-toggles">
+          <button class="btn-map-toggle active" id="btnTileSatellite" onclick="switchMapLayer('satellite')">
+            🛰️ Satellite View
+          </button>
+          <button class="btn-map-toggle" id="btnTileStreet" onclick="switchMapLayer('street')">
+            🗺️ Street & Roads
+          </button>
+        </div>
+
+        <!-- Reset Center -->
+        <button class="btn btn-secondary btn-reset-center" onclick="resetMapCenter()" title="Recenter to Marker">
+          🎯 Recenter
+        </button>
+
+        <button class="btn-close-map" onclick="closeInteractiveMap()" title="Close Map">✕</button>
+      </div>
+    </div>
+
+    <!-- Map Canvas -->
+    <div class="map-modal-body">
+      <div id="fullInteractiveMap" class="full-interactive-map"></div>
+
+      <!-- Floating Map Info Badge -->
+      <div class="floating-map-badge" id="floatingMapBadge">
+        <div class="fmb-header">
+          <span class="fmb-pin">📍</span>
+          <span class="fmb-name" id="fmbLocationName">Guntur, Andhra Pradesh, India</span>
+        </div>
+        <div class="fmb-grid">
+          <div class="fmb-item"><span>Coords:</span> <strong id="fmbCoords">16.3067° N, 80.4365° E</strong></div>
+          <div class="fmb-item"><span>Weather:</span> <strong id="fmbWeather">32°C–40°C • Partly Cloudy</strong></div>
+          <div class="fmb-item"><span>Rainfall:</span> <strong id="fmbRain">42.6 mm (Moderate)</strong></div>
+          <div class="fmb-item"><span>Area Type:</span> <strong id="fmbArea">Urban / Semi-Urban Area</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= FLOATING AI INSPECTOR COPILOT WIDGET ================= -->
+  <!-- Floating Robot / AI Agent Action Button (Fixed Bottom-Right) -->
+  <button id="btnFloatingCopilotToggle" class="floating-copilot-btn" onclick="toggleFloatingCopilot()"
+    title="Open AI Inspector Copilot" aria-label="Open AI Inspector Copilot">
+    <div class="copilot-btn-glow"></div>
+    <div class="copilot-btn-icon-wrap">
+      <svg class="robot-icon" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="10" rx="2" />
+        <circle cx="12" cy="5" r="2" />
+        <path d="M12 7v4" />
+        <line x1="8" y1="16" x2="8" y2="16.01" />
+        <line x1="16" y1="16" x2="16" y2="16.01" />
+        <path d="M9 19h6" />
+      </svg>
+    </div>
+    <span class="copilot-btn-tooltip">AI Copilot</span>
+    <span class="copilot-pulse-dot" title="Copilot Online"></span>
+  </button>
+
+  <!-- Floating AI Inspector Copilot Drawer / Card (Opens on Robot Click) -->
+  <aside class="floating-copilot-panel" id="floatingCopilotPanel" style="display: none;"
+    aria-label="AI Inspector Copilot">
+    <!-- Copilot Header Bar (Draggable) -->
+    <div class="chat-feed-header" id="copilotHeader" title="Click and drag to move window">
+      <div class="chat-title-group">
+        <div class="chat-bot-avatar">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="10" rx="2" />
+            <circle cx="12" cy="5" r="2" />
+            <path d="M12 7v4" />
+            <line x1="8" y1="16" x2="8" y2="16.01" />
+            <line x1="16" y1="16" x2="16" y2="16.01" />
+          </svg>
+        </div>
+        <div class="chat-header-text">
+          <span class="chat-title">AI INSPECTOR COPILOT</span>
+          <span class="chat-subtitle" id="copilotAssetSubtitle">Ground-Truth Vision Intelligence</span>
+        </div>
+      </div>
+      <div class="chat-header-right">
+        <button class="btn-copilot-voice-toggle" id="btnVoiceModeToggle" onclick="toggleContinuousVoiceChat(event)"
+          title="Toggle Continuous Voice Chat Mode (ChatGPT-Style Voice)">
+          <span class="voice-toggle-dot"></span>
+          <span class="voice-toggle-label" id="voiceToggleLabel">Voice Mode</span>
+        </button>
+        <button class="btn-copilot-ctrl" id="btnCopilotTTS" onclick="toggleVoiceOutput(event)"
+          title="Toggle Voice Output (Speech)">
+          <svg id="iconVoiceOn" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+            stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+          </svg>
+          <svg id="iconVoiceOff" style="display:none;" viewBox="0 0 24 24" width="13" height="13" fill="none"
+            stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <line x1="23" y1="9" x2="17" y2="15" />
+            <line x1="17" y1="9" x2="23" y2="15" />
+          </svg>
+        </button>
+        <button class="btn-copilot-ctrl" id="btnCopilotMinimize" onclick="toggleMinimizeCopilot(event)"
+          title="Minimize Window">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+        <button class="btn-copilot-ctrl" id="btnCopilotMaximize" onclick="toggleMaximizeCopilot(event)"
+          title="Maximize / Restore Window">
+          <svg id="iconMaximize" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+            stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+          </svg>
+          <svg id="iconRestore" style="display:none;" viewBox="0 0 24 24" width="13" height="13" fill="none"
+            stroke="currentColor" stroke-width="2">
+            <rect x="7" y="7" width="14" height="14" rx="2" ry="2" />
+            <path d="M3 17V5a2 2 0 0 1 2-2h12" />
+          </svg>
+        </button>
+        <button class="btn-copilot-ctrl btn-copilot-close" id="btnCopilotClose" onclick="toggleFloatingCopilot(false)"
+          title="Close Window">✕</button>
+      </div>
+    </div>
+
+    <!-- Voice Live Speech Banner / Continuous Conversation HUD -->
+    <div class="copilot-voice-banner state-listening" id="copilotVoiceBanner" style="display:none;">
+      <div class="voice-orb-container">
+        <div class="voice-orb" id="voiceOrb"></div>
+        <div class="voice-wave-bars" id="voiceWaveBars">
+          <span></span><span></span><span></span><span></span>
+        </div>
+      </div>
+      <div class="voice-status-wrapper">
+        <span class="voice-status-badge" id="voiceStatusBadge">LISTENING</span>
+        <span class="voice-banner-text" id="copilotVoiceText">Listening... speak naturally</span>
+      </div>
+      <div class="voice-actions-wrapper">
+        <button class="voice-stop-btn" id="btnVoiceStopSpeech" onclick="interruptVoiceChat(event)"
+          title="Stop Copilot Speaking" style="display:none;">⏹️ Stop</button>
+        <button class="voice-exit-btn" onclick="toggleContinuousVoiceChat(event, false)" title="Turn Voice Chat OFF">✕
+          Exit Voice</button>
+      </div>
+    </div>
+
+    <!-- Interactive Conversation Stream -->
+    <div class="chat-messages-container" id="chatMessagesContainer">
+      <!-- Dynamic Messages populated on load / interaction -->
+    </div>
+
+    <!-- Quick Suggestion Chips -->
+    <div class="chat-suggestions" id="chatSuggestions">
+      <button class="sugg-chip" onclick="sendQuickPrompt('What defects were detected in this image?')">⚡ Defects
+        Detected</button>
+      <button class="sugg-chip" onclick="sendQuickPrompt('Which defect is the most serious and why?')">⚠️ Worst
+        Defect</button>
+      <button class="sugg-chip" onclick="sendQuickPrompt('What are the calibrated measurements?')">📐
+        Dimensions</button>
+      <button class="sugg-chip"
+        onclick="sendQuickPrompt('Explain the thermal and moisture anomalies found in Stage 7.')">🔥 Thermal
+        Map</button>
+      <button class="sugg-chip" onclick="sendQuickPrompt('What repair action would normally be considered?')">🛠️ Repair
+        Guidelines</button>
+      <button class="sugg-chip" onclick="sendQuickPrompt('Explain this inspection in simple language.')">📋 Simple
+        Summary</button>
+      <button class="sugg-chip" onclick="sendQuickPrompt('What happened during Stage 1 to Stage 8?')">🔍 Stage
+        Breakdown</button>
+    </div>
+
+    <!-- Active Input Box -->
+    <div class="antigravity-chat-input-wrapper">
+      <div class="chat-input-pill">
+        <div class="pill-top-row">
+          <div class="plus-dropdown-wrapper">
+            <button class="pill-btn-plus" id="btnChatPlus" title="Attach context or image"
+              onclick="togglePlusMenu(event)">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
+            <input type="file" id="chatAttachFileInput" accept="image/*" style="display:none;"
+              onchange="handleChatFileAttach(event)">
+
+            <!-- Plus Action Context Popup -->
+            <div class="plus-popup-menu" id="plusPopupMenu">
+              <div class="ppm-item" onclick="triggerChatFileUpload()">
+                <span class="ppm-icon">📸</span>
+                <div class="ppm-text">
+                  <strong>Upload New Image</strong>
+                  <small>Inspect another photograph</small>
+                </div>
+              </div>
+              <div class="ppm-item" onclick="attachTelemetryContext()">
+                <span class="ppm-icon">📊</span>
+                <div class="ppm-text">
+                  <strong>Attach Stage Telemetry</strong>
+                  <small>Include all measurements & coordinates</small>
+                </div>
+              </div>
+              <div class="ppm-item" onclick="attachRepairStandard()">
+                <span class="ppm-icon">🛠️</span>
+                <div class="ppm-text">
+                  <strong>Engineering Repair Protocol</strong>
+                  <small>Request AASHTO / ASTM specs</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pill-bottom-row">
+          <input type="text" id="aiChatInput" class="pill-text-input"
+            placeholder="Ask AI Copilot about defects, stages, repairs, or measurements..."
+            onkeydown="handleChatInputKey(event)">
+          <button id="btnChatMic" class="pill-mic-btn" title="Toggle Continuous Voice Chat Mode"
+            onclick="toggleContinuousVoiceChat(event)">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <line x1="12" y1="19" x2="12" y2="23" />
+              <line x1="8" y1="23" x2="16" y2="23" />
+            </svg>
+          </button>
+          <button id="btnSendChat" class="pill-send-btn" title="Send Question" onclick="submitChatMessage()">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Toast Notification -->
+  <div class="toast-notification" id="toastNotification">
+    <span class="toast-message" id="toastMessage">Analysis Complete</span>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>

@@ -11,8 +11,8 @@ export const Header = ({ onOpenLogin }) => {
   const navigate = useNavigate();
 
   return (
-    <header className="sticky top-0 z-50 charcoal-glass-header transition-all">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+    <header className="relative w-full bg-[#08080a] border-b border-white/10 transition-all z-20">
+      <div className="max-w-[1780px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         {/* Left Side: Logo with White Light Crystal Prism */}
         <Logo />
 
@@ -24,20 +24,10 @@ export const Header = ({ onOpenLogin }) => {
           {/* Compact Officer / Inspector Login Button */}
           {isAuthenticated ? (
             <div className="flex items-center gap-2">
-              <Link
-                to={ROUTES.INSPECTOR_WORKSPACE}
-                className="obsidian-pill-glass inline-flex items-center gap-1.5 px-4 py-1.5 hover:border-white/40 text-zinc-200 hover:text-white text-xs font-semibold transition-all shadow-sm group"
-                title="Enter authorized inspection workspace"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-zinc-100 group-hover:scale-110 transition-transform" />
-                <span className="hidden sm:inline">Workspace</span>
-                <ArrowRight className="w-3 h-3 text-zinc-300 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-
               <button
                 type="button"
                 onClick={logout}
-                className="obsidian-pill-glass inline-flex items-center gap-1 px-3 py-1.5 hover:bg-red-500/20 text-zinc-400 hover:text-red-300 text-xs font-semibold transition-colors cursor-pointer"
+                className="obsidian-pill-glass inline-flex items-center gap-1 px-3.5 py-1.5 hover:bg-red-500/20 text-zinc-400 hover:text-red-300 text-xs font-semibold transition-colors cursor-pointer"
                 title="Logout from authorized session"
                 aria-label="Logout"
               >

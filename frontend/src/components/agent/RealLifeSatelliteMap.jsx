@@ -81,11 +81,28 @@ const getSpiderfiedComplaints = (items = []) => {
   });
 };
 
+const MapResizer = () => {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 150);
+    const onResize = () => map.invalidateSize();
+    window.addEventListener('resize', onResize);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [map]);
+  return null;
+};
+
 export const RealLifeSatelliteMap = ({
   complaints = [],
   onSelectComplaint,
+  onOpenAiVision,
   selectedComplaintId,
-  height = '600px'
+  height = '100%'
 }) => {
   const [mapType, setMapType] = useState('satellite');
   const [activeComplaint, setActiveComplaint] = useState(null);
@@ -108,78 +125,80 @@ export const RealLifeSatelliteMap = ({
 
   const currentCenter = selectedComplaintId
     ? (() => {
-        const found = displayedComplaints.find(c => (c.ticketId === selectedComplaintId || c._id === selectedComplaintId));
-        return found?._displayLat ? [found._displayLat, found._displayLng] : gunturCenter;
-      })()
+      const found = displayedComplaints.find(c => (c.ticketId === selectedComplaintId || c._id === selectedComplaintId));
+      return found?._displayLat ? [found._displayLat, found._displayLng] : gunturCenter;
+    })()
     : gunturCenter;
 
   return (
-    <div className="relative rounded-3xl overflow-hidden border border-white/20 shadow-2xl bg-black">
-      {/* Map Control Bar Overlay in Charcoal Glass */}
-      <div className="absolute top-3 left-3 z-[400] charcoal-glass rounded-2xl p-2 shadow-2xl border border-white/20 flex flex-wrap items-center gap-2 text-xs text-white">
-        <div className="flex items-center gap-1.5 font-bold text-white px-2 font-mono">
-          <Layers className="w-4 h-4 text-white drop-shadow-[0_0_6px_#ffffff]" />
-          <span>Real-Life Map View:</span>
+    <div className="relative rounded-3xl overflow-hidden border border-white/20 shadow-2xl bg-black w-full h-full flex flex-col min-h-0">
+      {/* Top Map Overlays Bar (Unified Non-Overlapping Row) */}
+      <div className="absolute top-3 left-3 right-3 z-[400] flex items-center justify-between gap-2 pointer-events-none">
+        {/* Left Map Switcher */}
+        <div className="charcoal-glass rounded-2xl p-1.5 shadow-2xl border border-white/20 flex items-center gap-1.5 text-xs text-white pointer-events-auto">
+          <div className="hidden sm:flex items-center gap-1 font-bold text-white px-1.5 font-mono text-[11px]">
+            <Layers className="w-3.5 h-3.5 text-white drop-shadow-[0_0_6px_#ffffff]" />
+            <span>Map:</span>
+          </div>
+
+          <div className="flex items-center bg-black/60 p-0.5 rounded-xl border border-white/10 gap-1">
+            <button
+              type="button"
+              onClick={() => setMapType('satellite')}
+              className={`px-2.5 py-1 rounded-lg font-bold transition-all flex items-center gap-1 text-[11px] ${mapType === 'satellite'
+                  ? 'white-gloss-btn text-black shadow'
+                  : 'text-zinc-400 hover:text-white'
+                }`}
+            >
+              <span>🛰️ Aerial Satellite</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMapType('streets')}
+              className={`px-2.5 py-1 rounded-lg font-bold transition-all text-[11px] ${mapType === 'streets'
+                  ? 'white-gloss-btn text-black shadow'
+                  : 'text-zinc-400 hover:text-white'
+                }`}
+            >
+              <span>🗺️ Streets</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMapType('osm')}
+              className={`px-2.5 py-1 rounded-lg font-bold transition-all text-[11px] ${mapType === 'osm'
+                  ? 'white-gloss-btn text-black shadow'
+                  : 'text-zinc-400 hover:text-white'
+                }`}
+            >
+              <span>🏙️ OSM</span>
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center bg-black/60 p-1 rounded-xl border border-white/10 gap-1">
-          <button
-            type="button"
-            onClick={() => setMapType('satellite')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 text-xs ${
-              mapType === 'satellite'
-                ? 'white-gloss-btn text-black shadow'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <span>🛰️ Aerial Satellite</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setMapType('streets')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all text-xs ${
-              mapType === 'streets'
-                ? 'white-gloss-btn text-black shadow'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <span>🗺️ Streets</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setMapType('osm')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all text-xs ${
-              mapType === 'osm'
-                ? 'white-gloss-btn text-black shadow'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <span>🏙️ OpenStreetMap</span>
-          </button>
+        {/* Right Active Red Dots Count Badge */}
+        <div className="charcoal-glass rounded-2xl px-3 py-1.5 shadow-2xl border border-white/20 flex items-center gap-2 text-xs text-white pointer-events-auto flex-shrink-0">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600 shadow-[0_0_8px_#ef4444]"></span>
+          </span>
+          <span className="font-mono font-bold text-red-400 text-[11px] whitespace-nowrap">
+            {displayedComplaints.filter(c => c.status !== 'RESOLVED').length} Active Red Dots
+          </span>
         </div>
       </div>
 
-      {/* Live Active Red Dots Count Badge */}
-      <div className="absolute top-3 right-3 z-[400] charcoal-glass rounded-2xl px-3.5 py-2 shadow-2xl border border-white/20 flex items-center gap-2.5 text-xs text-white">
-        <span className="relative flex h-3 w-3">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600 shadow-[0_0_8px_#ef4444]"></span>
-        </span>
-        <span className="font-mono font-bold text-red-400">
-          {displayedComplaints.filter(c => c.status !== 'RESOLVED').length} Active Red Dots Pinned
-        </span>
-      </div>
-
-      {/* Leaflet Map */}
-      <div style={{ height }}>
+      {/* Leaflet Map without Default White Zoom Controls Box */}
+      <div className="flex-1 w-full h-full min-h-0 relative" style={{ height: '100%' }}>
         <MapContainer
           center={currentCenter}
           zoom={14}
+          zoomControl={false}
           scrollWheelZoom={true}
           className="h-full w-full z-0"
         >
+          <MapResizer />
           <TileLayer
             key={mapType}
             attribution={attributions[mapType]}
@@ -214,7 +233,10 @@ export const RealLifeSatelliteMap = ({
                   <div className="p-1 max-w-xs space-y-2 text-xs">
                     {c.imageUrl && (
                       <div
-                        onClick={() => onSelectComplaint && onSelectComplaint(c)}
+                        onClick={() => {
+                          if (onOpenAiVision) onOpenAiVision(c);
+                          else if (onSelectComplaint) onSelectComplaint(c);
+                        }}
                         className="cursor-pointer hover:opacity-90 transition-opacity"
                         title="Click to launch AI Vision inspection"
                       >
@@ -228,9 +250,8 @@ export const RealLifeSatelliteMap = ({
                     <div>
                       <div className="flex items-center justify-between">
                         <span className="font-mono font-bold text-zinc-900 text-[11px]">{c.ticketId}</span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                          severity === 'CRITICAL' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
-                        }`}>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${severity === 'CRITICAL' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
+                          }`}>
                           {severity} ({c.aiAnalysis?.riskScore || 50}/100)
                         </span>
                       </div>
@@ -246,7 +267,8 @@ export const RealLifeSatelliteMap = ({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (onSelectComplaint) onSelectComplaint(c);
+                        if (onOpenAiVision) onOpenAiVision(c);
+                        else if (onSelectComplaint) onSelectComplaint(c);
                       }}
                       className="w-full py-2.5 white-gloss-btn text-black font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer hover:opacity-95 active:scale-95"
                     >
@@ -261,14 +283,14 @@ export const RealLifeSatelliteMap = ({
         </MapContainer>
       </div>
 
-      {/* Bottom Coordinates & Guntur Status Bar */}
+      {/* Bottom Coordinates & Live Status Bar */}
       <div className="p-3 bg-black/90 border-t border-white/15 text-zinc-300 text-[11px] font-mono flex flex-wrap items-center justify-between gap-3 px-4">
         <div className="flex items-center gap-2">
-          <MapPin className="w-3.5 h-3.5 text-white" />
-          <span>GUNTUR CITY GIS • LAT: 16.3067° N, LNG: 80.4365° E • RESOLUTION: 0.3m/px</span>
+          <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+          <span>LIVE GIS • LAT: {Number(currentCenter[0]).toFixed(4)}° N, LNG: {Number(currentCenter[1]).toFixed(4)}° E • SATELLITE HIGH-RES</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-zinc-400">Touch/Click any <strong className="text-red-400 font-bold">Red Dot</strong> to center & inspect defect</span>
+          <span className="text-zinc-400">Touch/Click any <strong className="text-red-400 font-bold">Red Dot</strong> to center & inspect live defect</span>
         </div>
       </div>
     </div>

@@ -13,9 +13,6 @@ export const LandingPage = () => {
       {/* 2. Hero Section with 2-column layout, primary CTA & Inspector Login */}
       <main className="flex-1">
         <HeroSection />
-
-        {/* 3. Four concise platform capabilities */}
-        <CapabilitySection />
       </main>
 
       {/* 4. Professional multi-column civic infrastructure footer */}

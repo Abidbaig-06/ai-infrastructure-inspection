@@ -378,16 +378,84 @@ const ASSETS_REGISTRY = {
   }
 };
 
-export const MaintenanceHistoryDrawer = ({ activeAssetId = 'R-104', onInspectTicket }) => {
+export const MaintenanceHistoryDrawer = ({ activeAssetId = 'R-104', activeComplaint, onInspectTicket }) => {
   const { complaints, setSelectedComplaint } = useGrievance();
-  const [selectedAssetKey, setSelectedAssetKey] = useState(
-    ASSETS_REGISTRY[activeAssetId] ? activeAssetId : 'R-104'
-  );
+
+  // If activeComplaint exists, determine initial asset code matching complaint category
+  const defaultAssetKey = activeComplaint ? (
+    activeComplaint.category?.toLowerCase().includes('road') || activeComplaint.category?.toLowerCase().includes('pothole') ? 'R-104' :
+    activeComplaint.category?.toLowerCase().includes('water') || activeComplaint.category?.toLowerCase().includes('pipe') ? 'W-009' :
+    activeComplaint.category?.toLowerCase().includes('electric') || activeComplaint.category?.toLowerCase().includes('power') ? 'E-044' :
+    activeComplaint.category?.toLowerCase().includes('drain') || activeComplaint.category?.toLowerCase().includes('waste') ? 'D-018' : 'R-104'
+  ) : (ASSETS_REGISTRY[activeAssetId] ? activeAssetId : 'R-104');
+
+  const [selectedAssetKey, setSelectedAssetKey] = useState(defaultAssetKey);
   const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL' | 'MAINTENANCE' | 'REPAIRS' | 'INSPECTIONS' | 'ISSUES' | 'COSTS'
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
-  const asset = ASSETS_REGISTRY[selectedAssetKey] || ASSETS_REGISTRY['R-104'];
+  const baseAsset = ASSETS_REGISTRY[selectedAssetKey] || ASSETS_REGISTRY['R-104'];
+
+  // Resolve or dynamically synthesize the asset record based on the active scanned complaint
+  const asset = React.useMemo(() => {
+    if (!activeComplaint) return baseAsset;
+
+    const cat = (activeComplaint.category || '').toLowerCase();
+    const isRoad = cat.includes('road') || cat.includes('pothole') || cat.includes('asphalt');
+    const isWater = cat.includes('water') || cat.includes('pipe') || cat.includes('drain');
+    const isElectric = cat.includes('electric') || cat.includes('power');
+    const isBridge = cat.includes('bridge') || cat.includes('flyover');
+
+    const severity = activeComplaint.aiAnalysis?.severity || (activeComplaint.aiAnalysis?.riskScore >= 80 ? 'CRITICAL' : 'HIGH');
+    const costEstimate = isRoad ? '₹45,000' : isBridge ? '₹1,20,000' : isWater ? '₹35,000' : '₹25,000';
+
+    return {
+      ...baseAsset,
+      name: activeComplaint.title || baseAsset.name,
+      location: activeComplaint.location?.address || activeComplaint.location?.landmark || baseAsset.location,
+      ward: activeComplaint.location?.ward || baseAsset.ward,
+      currentCondition: severity,
+      conditionBadgeColor: severity === 'CRITICAL' ? 'bg-red-950 text-red-300 border-red-800' : 'bg-amber-950 text-amber-300 border-amber-800',
+      lastMaintenance: '28 Aug 2026 (Live AI Scan)',
+      nextMaintenanceDue: severity === 'CRITICAL' ? 'Immediate SLA (4h)' : '24-48 Hours',
+      nextMaintenanceType: isRoad 
+        ? 'Hot-Mix Bituminous Cavity Milling & Compaction' 
+        : isBridge 
+        ? 'Structural Joint Rehabilitation & NDT Ultrasound' 
+        : 'Hydro-Static Pressure Sealing & Conduit Clearance',
+      nextMaintenanceStatus: 'SCHEDULED',
+      totalMaintenanceCostFormatted: costEstimate,
+      conditionHistory: [
+        { year: '2024', status: 'GOOD', color: 'text-emerald-400 border-emerald-500' },
+        { year: '2025', status: 'FAIR', color: 'text-amber-400 border-amber-500' },
+        { year: '2026', status: 'POOR', color: 'text-orange-400 border-orange-500' },
+        { year: 'CURRENT', status: severity, color: severity === 'CRITICAL' ? 'text-red-400 border-red-500 font-black' : 'text-amber-400 border-amber-500 font-black' }
+      ],
+      timeline: [
+        {
+          year: '2026',
+          date: '28 Aug 2026 (Today)',
+          title: `AI Inspection: ${activeComplaint.title || 'Surface Cavitation & Structural Defect'}`,
+          cost: costEstimate,
+          status: 'AI Scanned',
+          badgeColor: 'bg-red-950 text-red-300 border-red-800',
+          note: activeComplaint.description || 'Multi-stage computer vision confirmed localized substrate deterioration.'
+        },
+        ...baseAsset.timeline
+      ],
+      repairs: [
+        {
+          date: '28 Aug 2026',
+          repair: isRoad ? 'Pothole Milling & Infill' : 'Infrastructure Rapid Repair',
+          issue: activeComplaint.title || 'Surface Defect',
+          cost: costEstimate,
+          contractor: 'GMC Quick Response Team 01',
+          status: 'In Progress'
+        },
+        ...baseAsset.repairs
+      ]
+    };
+  }, [baseAsset, activeComplaint]);
 
   // Dynamically linked grievances for this asset
   const liveLinkedComplaints = (complaints || []).filter(c => matchesAsset(c, selectedAssetKey));
