@@ -50,7 +50,32 @@ export const ComplaintForm = () => {
   const [formError, setFormError] = useState(null);
   const [aiPolishNotice, setAiPolishNotice] = useState(null);
 
+  // Image ↔ category verification
+  const [imageFileName, setImageFileName] = useState('');
+  const [isVerifyingImage, setIsVerifyingImage] = useState(false);
+  const [imageVerdict, setImageVerdict] = useState(null); // { isValid, detectedCategory, confidence }
+
   const fileInputRef = useRef(null);
+
+  // Re-run the visual check whenever the image or the chosen category changes
+  const verifyImageAgainstCategory = async (imgData, cat, fname) => {
+    if (!imgData) { setImageVerdict(null); return; }
+    setIsVerifyingImage(true);
+    try {
+      const res = await classifyInfrastructureImage(imgData, cat, fname);
+      setImageVerdict(res);
+    } catch (err) {
+      console.warn('Image verification failed:', err);
+      setImageVerdict(null);
+    } finally {
+      setIsVerifyingImage(false);
+    }
+  };
+
+  useEffect(() => {
+    if (imageUrl) verifyImageAgainstCategory(imageUrl, category, imageFileName);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageUrl, category]);
 
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -126,12 +151,15 @@ export const ComplaintForm = () => {
     }
     setIsProcessingImage(true);
     setFormError(null);
+    setImageVerdict(null);
+    setImageFileName(file.name || '');
     const reader = new FileReader();
     reader.onload = (e) => {
       const uploadedData = e.target.result;
       setImageUrl(uploadedData);
       setIsProcessingImage(false);
       setAiPolishNotice(null);
+      // verification runs via the useEffect on imageUrl change
     };
     reader.readAsDataURL(file);
   };
@@ -358,6 +386,50 @@ export const ComplaintForm = () => {
               }}
               className="hidden"
             />
+
+            {/* Image ↔ Category Verification */}
+            {imageUrl && (
+              <div className="mt-2">
+                {isVerifyingImage ? (
+                  <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-400 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/10">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Verifying photo against selected category…</span>
+                  </div>
+                ) : imageVerdict ? (
+                  imageVerdict.isValid ? (
+                    <div className="flex items-center gap-2 text-[11px] font-mono px-3 py-2 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-200">
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                      <span>
+                        Photo consistent with <strong>{CATEGORIES.find(c => c.id === category)?.label || category}</strong>
+                        {imageVerdict.confidence ? ` · ${imageVerdict.confidence}% visual match` : ''}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-[11px] font-mono px-3 py-2 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-200">
+                      <div className="flex items-center gap-2 flex-1">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                        <span>
+                          This photo looks more like{' '}
+                          <strong>
+                            {CATEGORIES.find(c => c.id === imageVerdict.detectedCategory)?.label || imageVerdict.detectedCategory}
+                          </strong>
+                          {imageVerdict.confidence ? ` (${imageVerdict.confidence}% match)` : ''}. Confirm the category is correct.
+                        </span>
+                      </div>
+                      {CATEGORIES.some(c => c.id === imageVerdict.detectedCategory) && (
+                        <button
+                          type="button"
+                          onClick={() => handleCategoryChange(imageVerdict.detectedCategory)}
+                          className="obsidian-pill-glass px-3 py-1 text-[10px] font-bold text-white hover:border-white transition-colors cursor-pointer flex-shrink-0"
+                        >
+                          Switch to {CATEGORIES.find(c => c.id === imageVerdict.detectedCategory)?.label}
+                        </button>
+                      )}
+                    </div>
+                  )
+                ) : null}
+              </div>
+            )}
           </div>
 
           {/* 3. Issue Title, AI-Grounded Detailed Observation & Location */}
