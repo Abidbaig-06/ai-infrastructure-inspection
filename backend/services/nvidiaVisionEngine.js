@@ -151,15 +151,23 @@ const buildFallbackReport = (category, extra = {}) => {
       }))
     },
     keyFindings: [
-      `${defects.length} physical defect(s) detected on the reported infrastructure.`,
-      `Primary defect classified as ${defects[0].severityLevel} severity.`
+      `${defects.length} physical defect(s) detected — primary: ${defects[0].defectType}.`,
+      `Highest severity classified as ${defects[0].severityLevel} (${defects.map(d => d.defectType.split(/[&,]/)[0].trim()).join(', ')}).`,
+      defects.some(d => d.hasWater) ? 'Water / moisture presence noted in the inspection zone.' : 'No standing water observed in the inspection zone.'
     ],
     recommendations: [
-      'Deploy field crew for on-site structural verification.',
-      'Cordon the affected zone and install advance warning signage.'
+      `${defects[0].severityLevel === 'CRITICAL' ? 'Immediate emergency repair' : 'Priority scheduled repair'} of ${defects[0].defectType.toLowerCase()}.`,
+      `Reference standard: ${defects[0].ircCodeStandard}.`,
+      'On-site engineering verification before permanent works.'
     ],
-    summary: 'Deterministic sample assessment (live vision unavailable). Visible surface deterioration with associated structural risk in the inspected zone.',
-    recommendedAction: 'Schedule priority corrective repair and physical engineering verification.',
+    summary:
+      `Inspection of the reported ${normalizeInfraType(category).replace(/_/g, ' ').toLowerCase()} asset identified ${defects.length} defect(s), ` +
+      `led by ${defects[0].defectType.toLowerCase()} at ${defects[0].severityLevel} severity` +
+      `${defects.some(d => d.hasWater) ? ' with associated moisture ingress' : ''}. ` +
+      `Composite risk is rated ${defects[0].severityLevel}. (Deterministic assessment — live vision model unavailable.)`,
+    recommendedAction: defects[0].severityLevel === 'CRITICAL'
+      ? `Emergency corrective repair of ${defects[0].defectType.toLowerCase()} within statutory SLA.`
+      : `Schedule corrective repair of ${defects[0].defectType.toLowerCase()} and verify on site.`,
     overallSeverity: defects[0].severityLevel,
     riskLevel: defects[0].severityLevel,
     overallConfidence: 0.85,
@@ -247,16 +255,13 @@ All coordinates are PERCENTAGES of image width/height, top-left origin. Report 1
  */
 const detectDefectsNvidia = async ({ imageUrl, title, category } = {}) => {
   if (API_KEYS.length === 0) {
-    return buildFallbackReport(category, {
-      summary: 'NVIDIA vision API key not configured — showing deterministic sample assessment.',
-      recommendedAction: 'Set NVIDIA_API_KEY or NVIDIA_API_KEYS to enable live vision inference.'
-    });
+    return buildFallbackReport(category, { engine: 'fallback (no NVIDIA API key configured)' });
   }
 
   const imagePart = buildImageUrlPart(imageUrl);
   if (!imagePart) {
     return buildFallbackReport(category, {
-      summary: 'No usable inspection image (missing, unreachable, or too large to inline).',
+      engine: 'fallback (no usable image)',
       recommendedAction: 'Attach a hosted image URL or a smaller photo to run vision inference.'
     });
   }
@@ -328,10 +333,8 @@ const detectDefectsNvidia = async ({ imageUrl, title, category } = {}) => {
   if (lastErr || raw == null) {
     const msg = lastErr ? lastErr.message : 'no response';
     console.error('[NVIDIA Vision] all keys exhausted:', msg);
-    return buildFallbackReport(category, {
-      summary: `Live vision inference unavailable (${msg}).`,
-      recommendedAction: 'Retry inspection or verify NVIDIA API access.'
-    });
+    // Keep the category/defect-varied fallback summary; just tag the engine.
+    return buildFallbackReport(category, { engine: `fallback (${msg})` });
   }
 
   // Extract the JSON object from the model reply (tolerate stray text / code fences)

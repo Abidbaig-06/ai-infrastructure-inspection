@@ -171,6 +171,8 @@ export const InspectionWorkspacePage = () => {
 
   const activeComplaintItem = getActiveComplaintForDossier();
 
+  // Reset scroll once when the tab changes — no repeated timers, so an
+  // in-progress inspection animation can't keep yanking the view to the top.
   React.useEffect(() => {
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
@@ -178,26 +180,6 @@ export const InspectionWorkspacePage = () => {
     if (topRef.current) {
       topRef.current.scrollIntoView({ behavior: 'instant', block: 'start' });
     }
-    const t1 = setTimeout(() => {
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    }, 80);
-    const t2 = setTimeout(() => {
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    }, 350);
-    const t3 = setTimeout(() => {
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    }, 850);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-    };
   }, [activeTab]);
 
   // Run (or re-run) NVIDIA vision detection whenever the CV tab is opened for a
