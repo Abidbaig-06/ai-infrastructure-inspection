@@ -35,26 +35,29 @@ export const GrievanceProvider = ({ children }) => {
   const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
   const [isWorkOrderModalOpen, setIsWorkOrderModalOpen] = useState(false);
 
-  // Load complaints & analytics
+  // Load complaints & analytics — each request is independent so one failure
+  // (e.g. analytics or work-orders) never wipes the complaints list.
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try {
-      const [compRes, anaRes, woRes] = await Promise.all([
-        fetchComplaints(filters),
-        fetchAnalytics(),
-        fetchWorkOrders()
-      ]);
+    const [compRes, anaRes, woRes] = await Promise.allSettled([
+      fetchComplaints(filters),
+      fetchAnalytics(),
+      fetchWorkOrders()
+    ]);
 
-      if (compRes.success) setComplaints(compRes.data);
-      if (anaRes.success) setAnalytics(anaRes.data);
-      if (woRes.success) setWorkOrders(woRes.data);
-    } catch (err) {
-      console.error('Error loading grievance data:', err);
-      setError(err.message || 'Failed to sync with municipal database');
-    } finally {
-      setLoading(false);
+    if (compRes.status === 'fulfilled' && compRes.value?.success) {
+      setComplaints(compRes.value.data);
+    } else {
+      console.error('Failed to load complaints:', compRes.reason || compRes.value);
+      setError('Failed to sync grievances with municipal database');
     }
+    if (anaRes.status === 'fulfilled' && anaRes.value?.success) setAnalytics(anaRes.value.data);
+    else console.warn('Analytics load failed:', anaRes.reason || anaRes.value);
+    if (woRes.status === 'fulfilled' && woRes.value?.success) setWorkOrders(woRes.value.data);
+    else console.warn('Work orders load failed:', woRes.reason || woRes.value);
+
+    setLoading(false);
   }, [filters]);
 
   useEffect(() => {
