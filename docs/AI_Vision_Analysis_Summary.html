@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AI Vision Analysis Summary</title>
+<style>
+  @page { size: A4; margin: 20mm 18mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Liberation Sans", "DejaVu Sans", Arial, sans-serif;
+    font-size: 10.5pt; line-height: 1.5; color: #1a1a1a; margin: 0;
+  }
+  h1 { font-size: 20pt; margin: 0 0 4pt; color: #0b3d91; }
+  h2 { font-size: 13pt; margin: 20pt 0 6pt; color: #0b3d91; border-bottom: 1.5pt solid #0b3d91; padding-bottom: 3pt; }
+  h3 { font-size: 11pt; margin: 12pt 0 4pt; color: #333; }
+  p { margin: 4pt 0; }
+  .sub { color: #555; font-size: 9.5pt; margin: 0 0 14pt; }
+  code, .mono {
+    font-family: "Liberation Mono", "DejaVu Sans Mono", monospace;
+    font-size: 9pt; background: #f2f4f8; padding: 1pt 3pt; border-radius: 2pt;
+  }
+  pre {
+    font-family: "Liberation Mono", "DejaVu Sans Mono", monospace;
+    font-size: 8.5pt; background: #f2f4f8; border: 0.5pt solid #d5dae4;
+    border-radius: 3pt; padding: 8pt 10pt; white-space: pre-wrap; word-break: break-word;
+  }
+  table { border-collapse: collapse; width: 100%; margin: 8pt 0; font-size: 9.5pt; }
+  th, td { border: 0.5pt solid #c5ccd8; padding: 5pt 7pt; text-align: left; vertical-align: top; }
+  th { background: #eef1f7; font-weight: bold; }
+  ul { margin: 4pt 0 4pt 0; padding-left: 18pt; }
+  li { margin: 2pt 0; }
+  .tag { display: inline-block; background: #0b3d91; color: #fff; font-size: 8pt;
+         padding: 1pt 6pt; border-radius: 3pt; font-family: monospace; }
+  .callout { background: #f7f9fc; border-left: 3pt solid #0b3d91; padding: 8pt 12pt; margin: 8pt 0; }
+</style>
+</head>
+<body>
+
+<h1>AI Vision Analysis Summary</h1>
+<p class="sub">Infrastructure Inspection Agent &middot; NVIDIA NIM + Meta Llama&nbsp;3.2 Vision integration</p>
+
+<h2>1. What replaced what</h2>
+<table>
+  <tr><th>&nbsp;</th><th>Before</th><th>Now</th></tr>
+  <tr>
+    <td><b>Engine</b></td>
+    <td>Local Python server (<span class="mono">AI-agent/ai_server.py</span>) running SAM&nbsp;2.1 (Segment Anything) + Grounding&nbsp;DINO</td>
+    <td>One hosted call to <span class="mono">meta/llama-3.2-11b-vision-instruct</span> on NVIDIA NIM (build.nvidia.com)</td>
+  </tr>
+  <tr>
+    <td><b>Requires</b></td>
+    <td>GPU, model weights (~800&nbsp;MB), a dedicated long-lived process</td>
+    <td>Nothing — pure Node <span class="mono">fetch</span>, one API key</td>
+  </tr>
+  <tr>
+    <td><b>Deployable on</b></td>
+    <td>GPU VM only</td>
+    <td>Render / Vercel serverless</td>
+  </tr>
+</table>
+
+<h2>2. Pipeline — image in, structured inspection out</h2>
+
+<h3>2.1 Request path</h3>
+<p>Officer opens the AI Vision tab for a complaint &rarr; frontend calls
+<span class="mono">POST /api/ai-agent/vision</span> with <span class="mono">{ imageUrl, title, category }</span>
+&rarr; <span class="mono">aiAgentController.visionInspect</span>
+&rarr; <span class="mono">nvidiaVisionEngine.detectDefectsNvidia()</span>.</p>
+
+<h3>2.2 Image handling</h3>
+<ul>
+  <li><b>http(s) URL</b> (hosted photo) &rarr; passed straight to NIM as <span class="mono">image_url.url</span>; NVIDIA fetches it server-side.</li>
+  <li><b>base64 <span class="mono">data:</span> URI</b> (citizen phone upload) &rarr; passed inline if &le;&nbsp;180&nbsp;KB.</li>
+  <li>Neither / oversized &rarr; deterministic fallback (see &sect;4).</li>
+</ul>
+
+<h3>2.3 The prompt — one vision-LLM call</h3>
+<p><b>System role:</b> &ldquo;infrastructure inspection vision model for a municipal corporation&hellip; respond with ONLY a compact JSON object.&rdquo;</p>
+<p><b>User message</b> = the image + a strict JSON schema the model must fill, framed as an 8-stage municipal inspection. Returned in one shot:</p>
+<table>
+  <tr><th>Field</th><th>Meaning</th></tr>
+  <tr><td><span class="mono">infrastructureType</span> + <span class="mono">infrastructureConfidence</span></td><td>ROAD / BRIDGE / BUILDING / DRAINAGE / WATER_PIPELINE / ELECTRICAL / STREET_LIGHT / OTHER</td></tr>
+  <tr><td><span class="mono">surfaceRegion</span></td><td>bounding box of the asset surface (image %, top-left origin)</td></tr>
+  <tr><td><span class="mono">defects[]</span> (1&ndash;5, most severe first)</td><td><span class="mono">defectType</span>, <span class="mono">severity</span>, <span class="mono">confidence</span>, <span class="mono">dimensions</span>, <span class="mono">lengthMeters</span>, <span class="mono">widthMeters</span>, <span class="mono">standard</span> (IRC/CPHEEO/CEA/SWM), <span class="mono">bbox</span>, <span class="mono">isCrack</span>, <span class="mono">hasWater</span></td></tr>
+  <tr><td><span class="mono">surroundings</span></td><td><span class="mono">cracksDetected</span>, <span class="mono">waterOrMoisture</span>, <span class="mono">deteriorationRating</span>, <span class="mono">inspectionZoneRadiusMeters</span>, <span class="mono">zoneCenter</span></td></tr>
+  <tr><td><span class="mono">thermal</span></td><td>AI-<b>inferred</b> anomaly split <span class="mono">highAnomalyPct / moderatePct / nominalPct</span>, <span class="mono">riskLevel</span>, <span class="mono">hotspots[]</span> — inferred from RGB, no real thermal camera</td></tr>
+  <tr><td><span class="mono">keyFindings[]</span>, <span class="mono">recommendations[]</span></td><td>bullet lists</td></tr>
+  <tr><td><span class="mono">summary</span></td><td>2&ndash;3 sentence executive engineering assessment (per-image)</td></tr>
+  <tr><td><span class="mono">recommendedAction</span></td><td>single most important corrective action</td></tr>
+  <tr><td><span class="mono">overallSeverity</span>, <span class="mono">riskLevel</span>, <span class="mono">overallConfidence</span></td><td>roll-ups</td></tr>
+</table>
+<p><b>Call params:</b> <span class="mono">temperature 0.2</span>, <span class="mono">top_p 1</span>, <span class="mono">max_tokens 1024</span>, <span class="mono">stream false</span> — low temperature keeps the JSON well-formed and the assessment grounded, not creative.</p>
+
+<h3>2.4 Response parsing &amp; hardening</h3>
+<ul>
+  <li>Extract the JSON object from the reply — tolerates stray text / code fences (slices first <span class="mono">{</span> to last <span class="mono">}</span>).</li>
+  <li>Every field clamped / normalized:
+    <ul>
+      <li><span class="mono">clampPct</span> &rarr; all coordinates forced into 0&ndash;100</li>
+      <li><span class="mono">normalizeSeverity</span> &rarr; free text &rarr; CRITICAL / HIGH / MEDIUM / LOW</li>
+      <li><span class="mono">normalizeInfraType</span> &rarr; free text &rarr; one of 8 buckets</li>
+      <li>thermal percentages re-normalized to sum 100</li>
+      <li>missing values derived — zone center = defect centroid, hotspots = defect centers, deterioration = f(severity)</li>
+    </ul>
+  </li>
+  <li>Output = the full 8-stage payload the frontend renders.</li>
+</ul>
+
+<h2>3. Reliability layer</h2>
+<table>
+  <tr><th>Mechanism</th><th>Behavior</th></tr>
+  <tr><td><b>Key pool + rotation</b></td><td><span class="mono">NVIDIA_API_KEYS</span> (comma-separated) used round-robin; a request hitting <span class="mono">401 / 403 / 408 / 429 / 5xx</span> rotates to the next key and retries.</td></tr>
+  <tr><td><b>Per-request timeout</b></td><td><span class="mono">AbortController</span> at <span class="mono">NVIDIA_TIMEOUT_MS</span> (default 9000&nbsp;ms) so a stalled key can't freeze the Vercel function (Hobby kills at 10&nbsp;s). The 11B model was chosen over 90B to finish inside that window.</td></tr>
+  <tr><td><b>Deterministic fallback</b></td><td>No key / no usable image / all keys fail / unparseable JSON &rarr; the engine still returns the identical full shape so the tab always renders. Fallback <span class="mono">summary</span>, <span class="mono">keyFindings</span>, <span class="mono">recommendations</span>, <span class="mono">recommendedAction</span> are derived from category + defect type + severity + moisture flag (not one fixed string); the failure reason is tagged in <span class="mono">engine</span>.</td></tr>
+</table>
+<div class="callout">
+<p><b>The <span class="mono">engine</span> field tells you which path ran:</b></p>
+<ul>
+  <li><span class="mono">nvidia:meta/llama-3.2-11b-vision-instruct</span> &rarr; live model, per-image summary</li>
+  <li><span class="mono">fallback (&lt;reason&gt;)</span> &rarr; deterministic, category-derived summary</li>
+  <li><span class="mono">nvidia-unparsed</span> &rarr; model replied but not valid JSON</li>
+</ul>
+</div>
+
+<h2>4. How the analysis surfaces in the UI</h2>
+<p><span class="mono">AIVisionInspectorCanvas</span> maps each payload section to a stage. All overlays are CSS/SVG in image-% space — no server-rendered images.</p>
+<table>
+  <tr><th>Stage</th><th>Source field</th><th>Rendered as</th></tr>
+  <tr><td>1 Image</td><td>&mdash;</td><td>source photo</td></tr>
+  <tr><td>2 Infrastructure</td><td><span class="mono">infrastructure</span></td><td>blue surface-region box + type / confidence label</td></tr>
+  <tr><td>3 Defects</td><td><span class="mono">visionDefects[].bbox</span></td><td>red / yellow bounding boxes with type + confidence tags</td></tr>
+  <tr><td>4 Segmenting</td><td>same</td><td>pulsing dashed contour outlines</td></tr>
+  <tr><td>5 Surroundings</td><td><span class="mono">surroundings</span></td><td>dashed yellow inspection-zone ellipse + water marker</td></tr>
+  <tr><td>6 Measurements</td><td><span class="mono">measurements</span></td><td>green crosshairs + L/W metre labels</td></tr>
+  <tr><td>7 Radiothermal</td><td><span class="mono">thermal</span></td><td>CSS gradient thermal tint + hotspot radials + anomaly %</td></tr>
+  <tr><td>8 Master</td><td>everything</td><td>all overlays stacked, 8 layer toggles, legend, executive synthesis panel (stats + <span class="mono">summary</span> + <span class="mono">keyFindings</span> + <span class="mono">recommendations</span> + <span class="mono">recommendedAction</span> + <span class="mono">riskLevel</span>)</td></tr>
+</table>
+
+<h2>5. Configuration</h2>
+<pre>NVIDIA_API_KEYS      = nvapi-...,nvapi-...      (pool, round-robin + failover)
+NVIDIA_VISION_MODEL  = meta/llama-3.2-11b-vision-instruct
+NVIDIA_TIMEOUT_MS    = 9000                     (&lt; Vercel Hobby 10s function cap)
+NVIDIA_BASE_URL      = https://integrate.api.nvidia.com/v1   (default)</pre>
+<p><b>Endpoint:</b> <span class="mono">POST /api/ai-agent/vision</span> &rarr; <span class="mono">{ success, data: &lt;8-stage payload&gt; }</span></p>
+<p><b>Key files:</b>
+<span class="mono">backend/services/nvidiaVisionEngine.js</span>,
+<span class="mono">backend/controllers/aiAgentController.js</span> (<span class="mono">visionInspect</span>),
+<span class="mono">backend/routes/aiAgent.js</span> (<span class="mono">POST /vision</span>),
+<span class="mono">frontend/src/components/agent/AIVisionInspectorCanvas.jsx</span>.</p>
+
+</body>
+</html>
